@@ -8,9 +8,10 @@ on:
 env:
   PROJECT_ID: itservicedesk-502618
   REGION: us-central1
-  REPO_NAME: servicedesk-repo
-  IMAGE_NAME: servicedesk-app
-  SERVICE_NAME: service-desk-en
+  # Updated to the new Artifact Registry created in Cloud Shell
+  REPO_NAME: fdny-repo
+  IMAGE_NAME: fdny-itsm-app
+  SERVICE_NAME: fdny-itsm-service
 
 jobs:
   deploy:
@@ -19,19 +20,19 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # 1. Autenticarse en Google Cloud
+    # 1. Authenticate to Google Cloud
     - name: Google Auth
       id: auth
       uses: google-github-actions/auth@v2
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    # 2. Configurar Docker para Artifact Registry
+    # 2. Configure Docker for GCP Artifact Registry
     - name: Configure Docker for GCP
       run: |
         gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-    # 3. Construir y subir la imagen
+    # 3. Build and Push Docker Image
     - name: Build and Push Docker Image
       run: |
         IMAGE_URL="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
@@ -39,24 +40,21 @@ jobs:
         docker push $IMAGE_URL
         echo "IMAGE_URL=$IMAGE_URL" >> $GITHUB_ENV
 
-    # 4. Desplegar en Google Cloud Run
+    # 4. Deploy to Google Cloud Run
     - name: Deploy to Cloud Run
       uses: google-github-actions/deploy-cloudrun@v2
       with:
         service: ${{ env.SERVICE_NAME }}
         region: ${{ env.REGION }}
         image: ${{ env.IMAGE_URL }}
-        flags: --allow-unauthenticated # Permite acceder a la URL pública de la demo sin bloqueos de cuenta
+        flags: --allow-unauthenticated 
         env_vars: |
           MOCK=false
           APP_LANG=en
           GCP_PROJECT=itservicedesk-502618
           GCP_LOCATION=us-central1
           GEMINI_MODEL=gemini-2.5-flash
-          JIRA_DOMAIN=itexpert-team.atlassian.net
-          JIRA_EMAIL=crobregon@itexpert.pe
-          JIRA_PROJECT_KEY=PS
-          JIRA_ISSUE_TYPE_ID=10039
-          JIRA_TRANSITION_CLOSE_ID=111
-          JIRA_TRANSITION_ESCALATE_ID=31
-          JIRA_API_TOKEN=${{ secrets.JIRA_API_TOKEN }}
+          # Replaced Jira configuration with GLPI endpoints
+          GLPI_API_URL=https://glpi.peer-consulting.com/apirest.php/
+          GLPI_APP_TOKEN=${{ secrets.GLPI_APP_TOKEN }}
+          GLPI_USER_TOKEN=${{ secrets.GLPI_USER_TOKEN }}
