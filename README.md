@@ -1,4 +1,4 @@
-# IT SERVICE DESK — Demo IA (React + Node + Gemini + Jira)
+# IT SERVICE DESK — Demo IA (React + Node + Gemini + GLPI)
 
 Demo de mesa de ayuda con dos vistas lado a lado:
 
