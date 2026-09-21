@@ -1,3 +1,7 @@
+# NOTE: preserved from the previous static-SPA frontend. The imported TanStack
+# Start app is SSR (nitro output, no dist/), so this two-stage nginx build no
+# longer matches the build output. Kept for reference until the deployment
+# target is decided; nginx.conf was moved to the frontend root so COPY resolves.
 # Stage 1: Build React/Vite Frontend
 FROM node:18-alpine AS builder
 WORKDIR /app
