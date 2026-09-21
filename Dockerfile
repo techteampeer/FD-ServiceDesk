@@ -4,9 +4,8 @@
 FROM node:18-alpine AS frontend-builder
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-RUN npm install
+RUN npm install --legacy-peer-deps
 COPY frontend/ ./
-# Ensure relative API paths (/api/...) for same-origin integration
 ENV VITE_API_BASE_URL=""
 RUN npm run build
 
