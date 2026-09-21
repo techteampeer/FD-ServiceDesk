@@ -7,8 +7,13 @@ export default function App() {
   const [role, setRole] = useState("user");
   const [ready, setReady] = useState(false);
 
-  useEffect(() => { initLang().then(() => setReady(true)); }, []);
-  if (!ready) return null; // espera /api/config para saber el idioma
+  useEffect(() => {
+    initLang()
+      .catch((err) => console.warn("Config loading failed, using default language:", err))
+      .finally(() => setReady(true));
+  }, []);
+
+  if (!ready) return null;
 
   return (
     <div className="app">
@@ -18,17 +23,28 @@ export default function App() {
           <span className="brand-sub">{t("appSub")}</span>
         </div>
         <div className="role-switch">
-          <button className={role === "user" ? "on" : ""} onClick={() => setRole("user")}>{t("roleUser")}</button>
-          <button className={role === "desk" ? "on" : ""} onClick={() => setRole("desk")}>{t("roleDesk")}</button>
+          <button 
+            className={role === "user" ? "on" : ""} 
+            onClick={() => setRole("user")}
+          >
+            {t("roleUser")}
+          </button>
+          <button 
+            className={role === "desk" ? "on" : ""} 
+            onClick={() => setRole("desk")}
+          >
+            {t("roleDesk")}
+          </button>
         </div>
         <div className="env">DEMO</div>
-        {/* LOGOS: reinserta aquí tus <img> de Peer Consulting e IT Expert
-            (los que agregaste en producción), después de <div className="env"> */}
       </header>
+
       {role === "user" ? (
         <div className="single">
           <section className="pane">
-            <div className="pane-h"><span className="dot user" /> {t("paneUser")}</div>
+            <div className="pane-h">
+              <span className="dot user" /> {t("paneUser")}
+            </div>
             <UserIntake />
           </section>
         </div>
