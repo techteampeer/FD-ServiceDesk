@@ -1,7 +1,7 @@
 # ==========================================
 # Stage 1: Build TanStack Start / Nitro Frontend
 # ==========================================
-FROM node:18-alpine AS frontend-builder
+FROM node:22-alpine AS frontend-builder
 WORKDIR /app/frontend
 
 # Copy package definitions
@@ -15,9 +15,9 @@ ENV VITE_API_BASE_URL=""
 RUN npm run build
 
 # ==========================================
-# Stage 2: Configure Express Backend & Asset Integration
+# Stage 2: Configure Express Backend & Static Serving
 # ==========================================
-FROM node:18-alpine
+FROM node:22-alpine
 WORKDIR /app
 
 COPY backend/package*.json ./
@@ -25,11 +25,8 @@ RUN npm install --omit=dev
 
 COPY backend/ ./
 
-# Copy compiled Nitro public static assets to /app/public
+# Copy compiled Nitro public assets to /app/public for Express
 COPY --from=frontend-builder /app/frontend/.output/public ./public
-
-# Copy full Nitro server build output for SSR handling if needed
-COPY --from=frontend-builder /app/frontend/.output ./frontend/.output
 
 EXPOSE 8080
 ENV PORT=8080
