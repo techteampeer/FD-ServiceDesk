@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
+import { toNodeListener } from "h3";
 
 import identifyRoute from "./src/routes/identify.js";
 import devicesRoute from "./src/routes/devices.js";
@@ -40,21 +41,34 @@ app.get("/api/config", (req, res) => {
 const publicPath = path.join(__dirname, "frontend", ".output", "public");
 app.use(express.static(publicPath));
 
-// 3. Load Nitro SSR Server Bundle for Frontend Routes
+// 3. Load & Adapt Nitro SSR Server Bundle for Frontend Routes
 let nitroHandler = null;
 try {
   const nitroModule = await import("./frontend/.output/server/index.mjs");
-  nitroHandler = nitroModule.handler || nitroModule.default;
+  const target = nitroModule.handler || nitroModule.default || nitroModule.nitroApp;
+
+  if (typeof target === "function") {
+    nitroHandler = target;
+  } else if (target && typeof target === "object") {
+    // Convert Nitro/H3 app instance into standard Node (req, res) HTTP listener
+    const h3App = target.h3App || target;
+    nitroHandler = toNodeListener(h3App);
+  }
 } catch (err) {
   console.error("Could not load Nitro SSR server bundle:", err);
 }
 
 // Delegate non-API page requests to TanStack Start / Nitro SSR
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   if (req.path.startsWith("/api")) return next();
 
   if (nitroHandler) {
-    return nitroHandler(req, res);
+    try {
+      return await nitroHandler(req, res);
+    } catch (ssrErr) {
+      console.error("Nitro SSR execution error:", ssrErr);
+      return res.status(500).send("SSR Render Error");
+    }
   }
   res.status(404).send("Frontend SSR bundle not available.");
 });
