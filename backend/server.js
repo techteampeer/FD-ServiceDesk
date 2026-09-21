@@ -17,7 +17,7 @@ const NITRO_PORT = process.env.NITRO_PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 1. Spawn Nitro SSR Server with explicit NITRO_* variables
+// 1. Spawn Nitro SSR Server with explicit logging listeners
 const nitroDir = path.join(__dirname, "frontend", ".output", "server");
 
 console.log(`Starting Nitro SSR process from: ${nitroDir}`);
@@ -32,11 +32,15 @@ const nitroProcess = spawn("node", ["index.mjs"], {
     NITRO_HOST: "127.0.0.1",
     NODE_ENV: "production"
   },
-  stdio: "inherit"
+  stdio: ["ignore", "pipe", "pipe"]
 });
 
-nitroProcess.on("error", (err) => {
-  console.error("Failed to start Nitro SSR process:", err);
+nitroProcess.stdout.on("data", (data) => {
+  console.log(`[Nitro STDOUT]: ${data.toString().trim()}`);
+});
+
+nitroProcess.stderr.on("data", (data) => {
+  console.error(`[Nitro STDERR]: ${data.toString().trim()}`);
 });
 
 nitroProcess.on("exit", (code, signal) => {
@@ -120,7 +124,7 @@ app.use(async (req, res, next) => {
   }
 });
 
-// 5. Readiness check before opening port 8080 to Cloud Run traffic
+// 5. Delay Express port binding until Nitro is active
 async function waitForNitro(url, maxRetries = 20, intervalMs = 500) {
   for (let i = 1; i <= maxRetries; i++) {
     try {

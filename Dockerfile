@@ -12,18 +12,22 @@ ENV VITE_API_BASE_URL=""
 RUN npm run build
 
 # ==========================================
-# Stage 2: Configure Express & Nitro SSR Monolith
+# Stage 2: Configure Express Backend & Nitro SSR
 # ==========================================
 FROM node:22-alpine
 WORKDIR /app
 
+# Backend dependencies
 COPY backend/package*.json ./
 RUN npm install --omit=dev
 
 COPY backend/ ./
 
-# Copy full Nitro SSR output (.output/public & .output/server)
+# Copy compiled Nitro SSR output (.output/public & .output/server)
 COPY --from=frontend-builder /app/frontend/.output ./frontend/.output
+
+# Copy frontend node_modules so Nitro SSR can resolve externalized packages
+COPY --from=frontend-builder /app/frontend/node_modules ./frontend/node_modules
 
 EXPOSE 8080
 ENV PORT=8080
