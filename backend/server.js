@@ -5,12 +5,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { spawn } from "child_process";
 
-import identifyRoute from "./src/routes/identify.js";
-import devicesRoute from "./src/routes/devices.js";
-import locationRoute from "./src/routes/location.js";
-import resetSimRoute from "./src/routes/resetSim.js";
-import reportRoute from "./src/routes/report.js";
-
 dotenv.config();
 
 const app = express();
@@ -23,14 +17,19 @@ const NITRO_PORT = process.env.NITRO_PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 1. Spawn Nitro SSR Server on internal port 3000
-const nitroPath = path.join(__dirname, "frontend", ".output", "server", "index.mjs");
+// 1. Spawn Nitro SSR Server with explicit NITRO_* variables
+const nitroDir = path.join(__dirname, "frontend", ".output", "server");
 
-const nitroProcess = spawn("node", [nitroPath], {
+console.log(`Starting Nitro SSR process from: ${nitroDir}`);
+
+const nitroProcess = spawn("node", ["index.mjs"], {
+  cwd: nitroDir,
   env: {
     ...process.env,
     PORT: NITRO_PORT.toString(),
+    NITRO_PORT: NITRO_PORT.toString(),
     HOST: "127.0.0.1",
+    NITRO_HOST: "127.0.0.1",
     NODE_ENV: "production"
   },
   stdio: "inherit"
@@ -39,6 +38,17 @@ const nitroProcess = spawn("node", [nitroPath], {
 nitroProcess.on("error", (err) => {
   console.error("Failed to start Nitro SSR process:", err);
 });
+
+nitroProcess.on("exit", (code, signal) => {
+  console.error(`Nitro SSR process exited with code ${code} and signal ${signal}`);
+});
+
+// Import Backend API Routes
+import identifyRoute from "./src/routes/identify.js";
+import devicesRoute from "./src/routes/devices.js";
+import locationRoute from "./src/routes/location.js";
+import resetSimRoute from "./src/routes/resetSim.js";
+import reportRoute from "./src/routes/report.js";
 
 // 2. Backend API Routes
 app.use("/api/identify", identifyRoute);
@@ -55,13 +65,17 @@ app.get("/api/config", (req, res) => {
   });
 });
 
-// 3. Proxy non-API UI requests to Nitro SSR on 127.0.0.1:3000
+// 3. Serve Static Assets directly via Express
+const publicPath = path.join(__dirname, "frontend", ".output", "public");
+app.use(express.static(publicPath));
+
+// 4. Reverse Proxy UI Requests to Nitro SSR
 app.use(async (req, res, next) => {
   if (req.path.startsWith("/api")) return next();
 
-  try {
-    const targetUrl = `http://127.0.0.1:${NITRO_PORT}${req.originalUrl || req.url}`;
+  const targetUrl = `http://127.0.0.1:${NITRO_PORT}${req.originalUrl || req.url}`;
 
+  try {
     const headers = new Headers();
     for (const [key, value] of Object.entries(req.headers)) {
       if (value !== undefined) {
@@ -102,10 +116,31 @@ app.use(async (req, res, next) => {
     }
   } catch (err) {
     console.error("Proxy error to Nitro SSR:", err);
-    res.status(502).send("SSR Proxy Error - Nitro process starting up...");
+    res.status(502).send("SSR Proxy Error - Nitro process unreachable.");
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`FDNY Kiosk Express Server running on http://localhost:${PORT}`);
-});
+// 5. Readiness check before opening port 8080 to Cloud Run traffic
+async function waitForNitro(url, maxRetries = 20, intervalMs = 500) {
+  for (let i = 1; i <= maxRetries; i++) {
+    try {
+      await fetch(url, { method: "HEAD" });
+      console.log("Nitro SSR process is ready on port 3000.");
+      return true;
+    } catch (e) {
+      console.log(`Waiting for Nitro process on port 3000 (attempt ${i}/${maxRetries})...`);
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+  }
+  console.warn("Nitro readiness check timed out. Starting Express server anyway.");
+  return false;
+}
+
+async function startServer() {
+  await waitForNitro(`http://127.0.0.1:${NITRO_PORT}`);
+  app.listen(PORT, () => {
+    console.log(`FDNY Kiosk Express Server running on http://localhost:${PORT}`);
+  });
+}
+
+startServer();
