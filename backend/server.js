@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
-import { toNodeListener } from "h3";
 
 import identifyRoute from "./src/routes/identify.js";
 import devicesRoute from "./src/routes/devices.js";
@@ -41,36 +40,89 @@ app.get("/api/config", (req, res) => {
 const publicPath = path.join(__dirname, "frontend", ".output", "public");
 app.use(express.static(publicPath));
 
-// 3. Load & Adapt Nitro SSR Server Bundle for Frontend Routes
-let nitroHandler = null;
+// 3. Import Nitro SSR Server Module
+let nitroModule = null;
 try {
-  const nitroModule = await import("./frontend/.output/server/index.mjs");
-  const target = nitroModule.handler || nitroModule.default || nitroModule.nitroApp;
-
-  if (typeof target === "function") {
-    nitroHandler = target;
-  } else if (target && typeof target === "object") {
-    // Convert Nitro/H3 app instance into standard Node (req, res) HTTP listener
-    const h3App = target.h3App || target;
-    nitroHandler = toNodeListener(h3App);
-  }
+  nitroModule = await import("./frontend/.output/server/index.mjs");
+  console.log("Loaded Nitro SSR module successfully.");
 } catch (err) {
   console.error("Could not load Nitro SSR server bundle:", err);
 }
 
-// Delegate non-API page requests to TanStack Start / Nitro SSR
+// Helper to handle Web Standard fetch responses in Express
+async function handleWebFetch(fetchFn, req, res) {
+  const protocol = req.protocol || "http";
+  const host = req.get("host") || "localhost:8080";
+  const url = `${protocol}://${host}${req.originalUrl || req.url}`;
+
+  const headers = new Headers();
+  for (const [k, v] of Object.entries(req.headers)) {
+    if (v !== undefined) {
+      if (Array.isArray(v)) v.forEach((val) => headers.append(k, val));
+      else headers.set(k, v);
+    }
+  }
+
+  const init = { method: req.method, headers };
+  if (req.method !== "GET" && req.method !== "HEAD" && req.body) {
+    init.body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+  }
+
+  const webReq = new Request(url, init);
+  const webRes = await fetchFn(webReq);
+
+  res.status(webRes.status);
+  webRes.headers.forEach((val, key) => {
+    if (key.toLowerCase() !== "content-encoding") {
+      res.setHeader(key, val);
+    }
+  });
+
+  if (webRes.body) {
+    const reader = webRes.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(value);
+    }
+    res.end();
+  } else {
+    res.end();
+  }
+}
+
+// 4. Delegate non-API requests to TanStack Start / Nitro SSR
 app.use(async (req, res, next) => {
   if (req.path.startsWith("/api")) return next();
 
-  if (nitroHandler) {
-    try {
-      return await nitroHandler(req, res);
-    } catch (ssrErr) {
-      console.error("Nitro SSR execution error:", ssrErr);
-      return res.status(500).send("SSR Render Error");
-    }
+  if (!nitroModule) {
+    return res.status(404).send("Frontend SSR bundle not available.");
   }
-  res.status(404).send("Frontend SSR bundle not available.");
+
+  try {
+    const handler = nitroModule.handler || nitroModule.default?.handler;
+    const fetchFn = nitroModule.fetch || nitroModule.default?.fetch || (typeof nitroModule.default === "function" ? nitroModule.default : null);
+
+    // Strategy A: Direct Node (req, res) handler
+    if (typeof handler === "function" && handler.length >= 2) {
+      return await handler(req, res);
+    }
+
+    // Strategy B: Native Web Fetch handler
+    if (typeof fetchFn === "function") {
+      return await handleWebFetch(fetchFn, req, res);
+    }
+
+    // Strategy C: Direct fallback execution
+    if (typeof handler === "function") {
+      return await handler(req, res);
+    }
+
+    res.status(500).send("No valid Nitro handler found in build output.");
+  } catch (ssrErr) {
+    console.error("Nitro SSR execution error:", ssrErr);
+    res.status(500).send("SSR Render Error");
+  }
 });
 
 app.listen(PORT, () => {
