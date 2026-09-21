@@ -11,10 +11,11 @@ const handleResponse = async (response) => {
   return response.json();
 };
 
-/**
- * 1. Identify User by Badge / ID
- * POST /api/identify
- */
+/* ==========================================
+ * 1. GLPI Production Endpoints
+ * ========================================== */
+
+// Identify User by Badge / ID
 export const identifyUser = async (identifier) => {
   const response = await fetch(`${BASE_URL}/api/identify`, {
     method: "POST",
@@ -24,30 +25,20 @@ export const identifyUser = async (identifier) => {
   return handleResponse(response);
 };
 
-/**
- * 2. Get Assigned Devices (Computers & Phones)
- * GET /api/devices/:userId
- */
+// Get Assigned Devices
 export const getUserDevices = async (userId) => {
   const response = await fetch(`${BASE_URL}/api/devices/${userId}`);
   return handleResponse(response);
 };
 
-/**
- * 3. Get Station Coordinates & Location Details
- * GET /api/location/:locationId
- */
+// Get Station Location Details
 export const getLocation = async (locationId) => {
   const response = await fetch(`${BASE_URL}/api/location/${locationId}`);
   return handleResponse(response);
 };
 
-/**
- * 4. Dispatch Automated eSIM / Cellular Reset
- * POST /api/ticket/reset-sim
- */
+// Dispatch Automated eSIM / Cellular Reset
 export const resetSim = async (payload) => {
-  // Payload structure: { userId, deviceId, deviceTag, itemType }
   const response = await fetch(`${BASE_URL}/api/ticket/reset-sim`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -56,12 +47,8 @@ export const resetSim = async (payload) => {
   return handleResponse(response);
 };
 
-/**
- * 5. Report Incident / AI Agent Assisted Issue
- * POST /api/ticket/report
- */
+// Report Incident / Agent Assisted Ticket
 export const reportTicket = async (payload) => {
-  // Payload structure: { title, text, category, urgency, userId, locationId, deviceId, deviceTag, itemType }
   const response = await fetch(`${BASE_URL}/api/ticket/report`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -69,3 +56,15 @@ export const reportTicket = async (payload) => {
   });
   return handleResponse(response);
 };
+
+/* ==========================================
+ * 2. Stubs for Secondary / Legacy Components
+ * (Satisfies Vite imports for TechConsole, Dashboard, etc.)
+ * ========================================== */
+export const intake = async (messages) => ({ status: "ok" });
+export const getCase = async (key) => ({ id: key, title: "Sample Ticket", status: "Open" });
+export const askCase = async (key, question) => ({ reply: "Agent processed query." });
+export const resolveCase = async (key, decision, note) => ({ status: "Resolved" });
+export const getQueue = async () => [];
+export const getDashboard = async () => ({ total: 0, pending: 0 });
+export const getInsight = async () => ({ insight: "GLPI integration active." });
