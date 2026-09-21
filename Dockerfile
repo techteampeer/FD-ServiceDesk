@@ -3,8 +3,11 @@
 # ==========================================
 FROM node:18-alpine AS frontend-builder
 WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm install --legacy-peer-deps
+
+# Copiar únicamente package.json para omitir conflictos de lockfile
+COPY frontend/package.json ./
+RUN npm install --no-package-lock --no-audit --no-fund
+
 COPY frontend/ ./
 ENV VITE_API_BASE_URL=""
 RUN npm run build
@@ -14,11 +17,13 @@ RUN npm run build
 # ==========================================
 FROM node:18-alpine
 WORKDIR /app
-COPY backend/package*.json ./
-RUN npm install --omit=dev
+
+COPY backend/package.json ./
+RUN npm install --omit=dev --no-package-lock --no-audit --no-fund
+
 COPY backend/ ./
 
-# Copy compiled React static files to /app/public
+# Copiar los estáticos compilados
 COPY --from=frontend-builder /app/frontend/dist ./public
 
 EXPOSE 8080
