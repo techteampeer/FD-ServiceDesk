@@ -17,7 +17,7 @@ const NITRO_PORT = process.env.NITRO_PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 1. Spawn Nitro SSR Server with explicit logging listeners
+// 1. Spawn Nitro SSR Server with explicit logging listeners and 0.0.0.0 binding
 const nitroDir = path.join(__dirname, "frontend", ".output", "server");
 
 console.log(`Starting Nitro SSR process from: ${nitroDir}`);
@@ -28,8 +28,8 @@ const nitroProcess = spawn("node", ["index.mjs"], {
     ...process.env,
     PORT: NITRO_PORT.toString(),
     NITRO_PORT: NITRO_PORT.toString(),
-    HOST: "127.0.0.1",
-    NITRO_HOST: "127.0.0.1",
+    HOST: "0.0.0.0",
+    NITRO_HOST: "0.0.0.0",
     NODE_ENV: "production"
   },
   stdio: ["ignore", "pipe", "pipe"]
