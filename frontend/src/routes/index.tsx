@@ -33,14 +33,14 @@ const automationCases = [
   {
     icon: MapPin,
     tag: "Device Recovery",
-    title: "Workspace ONE GPS & Sound Ping Integration",
+    title: "Device Localization from the Asset Catalog",
     body: "Enable self-service tracking for misplaced field tablets, such as ePCR devices accidentally left at hospitals or other locations.",
     points: [
       "Locate enrolled field tablets",
-      "Trigger device sound ping",
+      "See the assigned station on a map",
       "View last known location",
       "Identify device status",
-      "Reduce unnecessary technician dispatches",
+      "Escalate to a service ticket when the device is not found",
     ],
   },
   {
@@ -122,7 +122,7 @@ function LandingPage() {
                     className="border-white/30 bg-white/10 text-navy-foreground hover:bg-white/20 hover:text-navy-foreground"
                   >
                     <Link to="/staff">
-                      <Headset className="size-4" /> Service Desk View
+                      <Headset className="size-4" /> Service desk
                     </Link>
                   </Button>
                 ) : null}
@@ -201,7 +201,7 @@ function LandingPage() {
                 <Headset className="size-6" />
               </span>
               <h3 className="mt-5 font-display text-2xl font-extrabold">
-                IT Service Desk Staff View
+                Service desk view
               </h3>
               <p className="mt-2 text-sm text-navy-foreground/80">
                 Access the service-desk dashboard and manage incoming cases.

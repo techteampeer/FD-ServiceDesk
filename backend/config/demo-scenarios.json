@@ -1,0 +1,49 @@
+{
+  "note": "Scenario map for demo rehearsal, derived from the records that actually exist in GLPI. No new seed data was created. Passwords are not checked in this demo; any 6+ character value works.",
+  "staff": [
+    { "signIn": "900108", "user": "snovak", "name": "Simone Novak", "glpiId": 14, "role": "staff", "use": "Service-desk portal: dashboard, queue, fleet, inventory" },
+    { "signIn": "900107", "user": "kmensah", "name": "Kofi Mensah", "glpiId": 13, "role": "staff", "use": "Second service-desk account" }
+  ],
+  "members": [
+    {
+      "signIn": "10101",
+      "name": "John Smith",
+      "glpiId": 35,
+      "devices": ["FDNY-TAB-1001 (Computer)", "FDNY-TAB-1002 (Computer)", "FDNY-CEL-2001 (Phone)", "FDNY-CEL-2002 (Phone)"],
+      "location": "Engine 33 (40.7648, -73.9540)",
+      "covers": ["happy path", "Computer + Phone in one account", "name-only identifiers (no BTDS tag)", "generated carrier telemetry"]
+    },
+    {
+      "signIn": "900101",
+      "name": "Marisol Ruiz",
+      "glpiId": 7,
+      "devices": ["FDNY-EPCR-0301 (Phone, In use, BTDS2026012301)"],
+      "location": "EMS Station 47 - Northgate (40.746100, -73.811000)",
+      "covers": ["BTDS-tagged asset", "real seeded FirstNet SIM/line from GLPI", "healthy connectivity diagnostic"]
+    },
+    {
+      "signIn": "900104",
+      "name": "Rafael Castellanos",
+      "glpiId": 10,
+      "devices": ["FDNY-EPCR-0304 (Phone, Lost or stolen, BTDS2026012304)"],
+      "location": "Engine 312 / Ladder 88 - Harbor Point (40.664100, -74.001200)",
+      "covers": ["lost-device flow", "sound ping FAILS", "escalation to a GLPI ticket"]
+    },
+    {
+      "signIn": "900103",
+      "name": "Tova Lindqvist",
+      "glpiId": 9,
+      "devices": ["FDNY-EPCR-0303 (Phone, In repair, BTDS2026012303)"],
+      "location": "Engine 312 / Ladder 88 - Harbor Point (40.664100, -74.001200)",
+      "covers": ["In repair status", "ping blocked", "degraded carrier state"]
+    },
+    {
+      "signIn": "900106",
+      "name": "Aiko Yamamoto",
+      "glpiId": 12,
+      "devices": ["FDNY-EPCR-0305 (Phone, In repair)", "FDNY-EPCR-0306 (Phone, In use, Verizon eSIM)"],
+      "location": "Bureau of EMS Training Academy - Fort Lenape (40.562300, -74.139100)",
+      "covers": ["two devices with different statuses", "Verizon Frontline eSIM path"]
+    }
+  ]
+}

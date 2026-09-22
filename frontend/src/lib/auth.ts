@@ -1,4 +1,4 @@
-import { ApiError, identifyUser, type GlpiUser } from "./api";
+import { ApiError, loginUser, type GlpiUser } from "./api";
 
 const KEY = "fdny-session";
 
@@ -17,12 +17,21 @@ export interface Session {
  * field is still collected and validated by the form, but no credential check
  * happens server-side yet. Do not treat this as authentication.
  */
+/**
+ * Signs in through GLPI.
+ *
+ * The password is passed straight to the backend, which hands it to GLPI's
+ * initSession and drops it. It is never written to localStorage and is not part
+ * of the stored session. `passwordVerified` reports whether GLPI actually
+ * checked it - this instance has credential login disabled, so the portal says
+ * so rather than implying a check happened.
+ */
 export async function signIn(
   identifier: string,
-  _password: string,
-): Promise<{ ok: boolean; error?: string; user?: GlpiUser }> {
+  password: string,
+): Promise<{ ok: boolean; error?: string; user?: GlpiUser; passwordVerified?: boolean }> {
   try {
-    const { user } = await identifyUser(identifier.trim());
+    const { user, auth } = await loginUser(identifier.trim(), password);
     if (!user?.id) {
       return { ok: false, error: "That ID was not found in the FDNY directory." };
     }
@@ -34,9 +43,12 @@ export async function signIn(
         /* private mode / storage disabled - stay signed in for this page only */
       }
     }
-    return { ok: true, user };
+    return { ok: true, user, passwordVerified: Boolean(auth?.passwordVerified) };
   } catch (error) {
     if (error instanceof ApiError) {
+      if (error.status === 401) {
+        return { ok: false, error: "GLPI rejected that login and password." };
+      }
       if (error.status === 404) {
         return {
           ok: false,

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { BatteryMedium, MapPin, RefreshCw, Search, Smartphone, Volume2 } from "lucide-react";
+import { BatteryMedium, MapPin, RefreshCw, Search, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { Navbar } from "@/components/fdny/Navbar";
 import { Footer } from "@/components/fdny/Footer";
@@ -39,7 +39,7 @@ export const Route = createFileRoute("/staff/devices")({
       {
         name: "description",
         content:
-          "Enrolled field device fleet: health, carrier, battery, last check-in, and remote actions such as sound ping and eSIM refresh.",
+          "Enrolled field device fleet: health, carrier, battery, last check-in, assigned station and simulated remote actions.",
       },
       { property: "og:title", content: "Field Devices — FDNY Service Desk" },
       {
@@ -153,7 +153,7 @@ function StaffDevicesPage() {
         theme="navy"
         brandSubtitle="Service Desk Operations"
         items={staffNav}
-        user={navUser ?? { name: "Service Desk", initials: "SD" }}
+        user={navUser ?? { name: "Service desk", initials: "SD" }}
         accountArea="staff"
       />
 
@@ -380,14 +380,6 @@ function StaffDevicesPage() {
                     Remote actions
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() => run("Sound ping")}
-                    >
-                      <Volume2 className="size-4" /> Sound ping
-                    </Button>
                     <Button
                       size="sm"
                       variant="outline"

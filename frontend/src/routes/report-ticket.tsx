@@ -132,9 +132,9 @@ const ticketDrafts: Record<Topic, Record<string, string>> = {
     "Issue Type": "Device Recovery — misplaced field tablet",
     "Device ID": "Tablet-EPCR-2391",
     Location: "Bellevue Hospital ED, Manhattan",
-    Description: "ePCR tablet left at hospital after patient transfer; sound ping attempted.",
+    Description: "ePCR tablet misplaced after a run; located against its assigned station.",
     Priority: "High",
-    "Suggested Resolution": "Hospital sweep with sound ping; no technician dispatch required",
+    "Suggested Resolution": "Sweep the last known station; no technician dispatch required",
   },
   connectivity: {
     "Issue Type": "Connectivity — FirstNet data loss",
@@ -213,13 +213,24 @@ function ReportTicketPage() {
       cancelled = true;
     };
   }, [member]);
+  // Identity of the current device set. When the signed-in member changes, this
+  // changes too, and any device selected for the previous member is dropped -
+  // otherwise a stale id could keep an old asset (and its coordinates) on screen.
+  const deviceSetKey = devices.map((d) => `${d.itemType}:${d.id}`).join(",");
   useEffect(() => {
     const first = devices[0];
-    if (selectedDeviceId === null && first) setSelectedDeviceId(first.id);
-  }, [devices, selectedDeviceId]);
+    if (!first) {
+      setSelectedDeviceId(null);
+      return;
+    }
+    if (!devices.some((d) => d.id === selectedDeviceId)) setSelectedDeviceId(first.id);
+    // selectedDeviceId is intentionally not a dependency: this only re-runs when
+    // the device set itself changes, so it never fights a deliberate selection.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deviceSetKey]);
 
-
-
+  // Only ever a device from the CURRENT list, so the map, the agent and the
+  // ticket all describe the same asset.
   const selectedDevice: GlpiDevice | null =
     devices.find((d) => d.id === selectedDeviceId) ?? devices[0] ?? null;
 
@@ -551,6 +562,18 @@ function ReportTicketPage() {
                 ))}
               </div>
             )}
+            {/* Position of the SELECTED asset, from the GLPI location on that
+                asset. Keyed by asset identity so switching device or member
+                remounts the map instead of leaving the previous coordinates. */}
+            {selectedDevice?.latitude && selectedDevice?.longitude ? (
+              <DeviceMap
+                key={`sel-${selectedDevice.itemType}-${selectedDevice.id}-${selectedDevice.latitude},${selectedDevice.longitude}`}
+                latitude={selectedDevice.latitude}
+                longitude={selectedDevice.longitude}
+                label={`${selectedDevice.name} (${selectedDevice.type ?? selectedDevice.itemType})`}
+                locationName={selectedDevice.locationName}
+              />
+            ) : null}
             {selectedDevice ? (
               <Button
                 type="button"
@@ -727,7 +750,12 @@ function MessageBubble({
               ))}
             </dl>
             {/* Marker at the GLPI coordinates for this asset. */}
-            {message.map ? <DeviceMap {...message.map} /> : null}
+            {message.map ? (
+              <DeviceMap
+                key={`${message.id}-${message.map.latitude},${message.map.longitude}`}
+                {...message.map}
+              />
+            ) : null}
           </div>
         ) : null}
         {message.actions ? (

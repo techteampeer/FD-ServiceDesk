@@ -22,6 +22,7 @@ import { Route as StaffIndexRouteImport } from './routes/staff/index'
 import { Route as StaffCasesRouteImport } from './routes/staff/cases'
 import { Route as StaffDevicesRouteImport } from './routes/staff/devices'
 import { Route as StaffInventoryRouteImport } from './routes/staff/inventory'
+import { Route as StaffReportForRouteImport } from './routes/staff/report-for'
 import { Route as StaffReportsRouteImport } from './routes/staff/reports'
 import { Route as StaffSettingsRouteImport } from './routes/staff/settings'
 
@@ -90,6 +91,11 @@ const StaffInventoryRoute = StaffInventoryRouteImport.update({
   path: '/staff/inventory',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StaffReportForRoute = StaffReportForRouteImport.update({
+  id: '/staff/report-for',
+  path: '/staff/report-for',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StaffReportsRoute = StaffReportsRouteImport.update({
   id: '/staff/reports',
   path: '/staff/reports',
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/staff/cases': typeof StaffCasesRoute
   '/staff/devices': typeof StaffDevicesRoute
   '/staff/inventory': typeof StaffInventoryRoute
+  '/staff/report-for': typeof StaffReportForRoute
   '/staff/reports': typeof StaffReportsRoute
   '/staff/settings': typeof StaffSettingsRoute
   '/staff/': typeof StaffIndexRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/staff/cases': typeof StaffCasesRoute
   '/staff/devices': typeof StaffDevicesRoute
   '/staff/inventory': typeof StaffInventoryRoute
+  '/staff/report-for': typeof StaffReportForRoute
   '/staff/reports': typeof StaffReportsRoute
   '/staff/settings': typeof StaffSettingsRoute
   '/staff': typeof StaffIndexRoute
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/staff/cases': typeof StaffCasesRoute
   '/staff/devices': typeof StaffDevicesRoute
   '/staff/inventory': typeof StaffInventoryRoute
+  '/staff/report-for': typeof StaffReportForRoute
   '/staff/reports': typeof StaffReportsRoute
   '/staff/settings': typeof StaffSettingsRoute
   '/staff/': typeof StaffIndexRoute
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/staff/cases'
     | '/staff/devices'
     | '/staff/inventory'
+    | '/staff/report-for'
     | '/staff/reports'
     | '/staff/settings'
     | '/staff/'
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
     | '/staff/cases'
     | '/staff/devices'
     | '/staff/inventory'
+    | '/staff/report-for'
     | '/staff/reports'
     | '/staff/settings'
     | '/staff'
@@ -202,6 +213,7 @@ export interface FileRouteTypes {
     | '/staff/cases'
     | '/staff/devices'
     | '/staff/inventory'
+    | '/staff/report-for'
     | '/staff/reports'
     | '/staff/settings'
     | '/staff/'
@@ -220,6 +232,7 @@ export interface RootRouteChildren {
   StaffCasesRoute: typeof StaffCasesRoute
   StaffDevicesRoute: typeof StaffDevicesRoute
   StaffInventoryRoute: typeof StaffInventoryRoute
+  StaffReportForRoute: typeof StaffReportForRoute
   StaffReportsRoute: typeof StaffReportsRoute
   StaffSettingsRoute: typeof StaffSettingsRoute
   StaffIndexRoute: typeof StaffIndexRoute
@@ -318,6 +331,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffInventoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/staff/report-for': {
+      id: '/staff/report-for'
+      path: '/staff/report-for'
+      fullPath: '/staff/report-for'
+      preLoaderRoute: typeof StaffReportForRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/staff/reports': {
       id: '/staff/reports'
       path: '/staff/reports'
@@ -348,6 +368,7 @@ const rootRouteChildren: RootRouteChildren = {
   StaffCasesRoute: StaffCasesRoute,
   StaffDevicesRoute: StaffDevicesRoute,
   StaffInventoryRoute: StaffInventoryRoute,
+  StaffReportForRoute: StaffReportForRoute,
   StaffReportsRoute: StaffReportsRoute,
   StaffSettingsRoute: StaffSettingsRoute,
   StaffIndexRoute: StaffIndexRoute,

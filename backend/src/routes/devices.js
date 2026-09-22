@@ -1,31 +1,33 @@
 import express from "express";
-import { getUserDevices, getLocation } from "../glpi.js";
+import { getUserDevices } from "../glpi.js";
+import { listFleet } from "../services/assets.js";
+import { requireSelfOrStaff, requireStaff } from "../services/roles.js";
 
 const router = express.Router();
 
-router.get("/:userId", async (req, res) => {
+// GET /api/devices - the whole FDNY Phone fleet, same normalized shape as
+// GET /api/devices/:userId. Both are thin wrappers over the asset service.
+router.get("/", requireStaff, async (req, res) => {
   try {
-    const { userId } = req.params;
-    const devices = await getUserDevices(userId);
-
-    const enrichedDevices = await Promise.all(
-      devices.map(async (device) => {
-        let locationName = "No location assigned";
-        if (device.locations_id) {
-          try {
-            const loc = await getLocation(device.locations_id);
-            locationName = loc.name || locationName;
-          } catch (err) {
-            console.error(`Failed to resolve location ID ${device.locations_id}`, err);
-          }
-        }
-        return { ...device, unit: locationName };
-      })
-    );
-
-    res.json({ devices: enrichedDevices });
+    const devices = await listFleet({
+      limit: req.query.limit ? Math.min(Number(req.query.limit) || 200, 500) : 200,
+      // ?taggedOnly=1 restricts the result to BTDS-tagged assets.
+      taggedOnly: ["1", "true", "yes"].includes(String(req.query.taggedOnly ?? "").toLowerCase()),
+    });
+    res.json({ devices, count: devices.length });
   } catch (error) {
     console.error("Error in /api/devices:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Devices are returned already enriched (assetTag, type, manufacturer/model,
+// status, location id + name, itemType "Phone"). `unit` is kept for the kiosk UI.
+router.get("/:userId", requireSelfOrStaff("userId"), async (req, res) => {
+  try {
+    res.json({ devices: await getUserDevices(req.params.userId) });
+  } catch (error) {
+    console.error("Error in /api/devices/:userId:", error);
     res.status(500).json({ error: error.message });
   }
 });

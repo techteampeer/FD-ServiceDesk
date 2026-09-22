@@ -22,16 +22,30 @@ const __dirname = path.dirname(__filename);
 // 1. Backend API Routes
 // ==========================================
 import identifyRoute from "./src/routes/identify.js";
+import authRoute from "./src/routes/auth.js";
+import usersRoute from "./src/routes/users.js";
 import devicesRoute from "./src/routes/devices.js";
 import locationRoute from "./src/routes/location.js";
 import resetSimRoute from "./src/routes/resetSim.js";
 import reportRoute from "./src/routes/report.js";
+import ticketsRoute from "./src/routes/tickets.js";
+import actionsRoute from "./src/routes/actions.js";
+import inventoryRoute from "./src/routes/inventory.js";
+import agentRoute from "./src/routes/agent.js";
+import dashboardRoute from "./src/routes/dashboard.js";
 
 app.use("/api/identify", identifyRoute);
+app.use("/api/auth", authRoute);
+app.use("/api/users", usersRoute);
 app.use("/api/devices", devicesRoute);
 app.use("/api/location", locationRoute);
 app.use("/api/ticket/reset-sim", resetSimRoute);
 app.use("/api/ticket/report", reportRoute);
+app.use("/api/tickets", ticketsRoute);
+app.use("/api/actions", actionsRoute);
+app.use("/api/inventory", inventoryRoute);
+app.use("/api/agent", agentRoute);
+app.use("/api/dashboard", dashboardRoute);
 
 app.get("/api/config", (req, res) => {
   res.json({

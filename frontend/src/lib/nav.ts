@@ -15,6 +15,7 @@ export type AppRoute =
   | "/settings"
   | "/staff"
   | "/staff/cases"
+  | "/staff/report-for"
   | "/staff/devices"
   | "/staff/inventory"
   | "/staff/reports"
@@ -41,4 +42,5 @@ export const staffNav: NavItem[] = [
   { label: "Open Cases", to: "/staff/cases" },
   { label: "Devices", to: "/staff/devices" },
   { label: "Inventory", to: "/staff/inventory" },
+  { label: "Report for a Member", to: "/staff/report-for" },
 ];

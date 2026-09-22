@@ -50,8 +50,8 @@ function LoginPage() {
     if (!identifier.trim()) next.identifier = "Enter your email, Employee ID or login.";
     else if (identifier.includes("@") && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(identifier))
       next.identifier = "Enter a valid email address.";
+    // No local strength rule: GLPI is the only thing that may judge a password.
     if (!password) next.password = "Enter your password.";
-    else if (password.length < 6) next.password = "Password must be at least 6 characters.";
     setErrors(next);
     setFormError(null);
     if (Object.keys(next).length) return;
@@ -67,15 +67,18 @@ function LoginPage() {
     const staff = res.user?.role === "staff";
     if (mode === "staff" && !staff) {
       setFormError(
-        "That account does not have service-desk access. Use the FDNY Member tab, or sign in with a service-desk account.",
+        "That account does not have service-desk access. Use the FDNY end users tab, or sign in with a service-desk account.",
       );
       return;
     }
     toast.success(
       res.user
-        ? `Signed in as ${res.user.displayName ?? res.user.name}${staff ? " (Service Desk)" : ""}`
+        ? `Signed in as ${res.user.displayName ?? res.user.name}${staff ? " (Service desk)" : ""}`
         : "Signed in to the portal",
     );
+    if (!res.passwordVerified) {
+      toast.info("GLPI has credential login disabled, so the password was not verified.");
+    }
     // Staff land in the service-desk portal; members in the self-service one.
     navigate({ to: staff && mode === "staff" ? "/staff" : "/" });
   };
@@ -138,8 +141,8 @@ function LoginPage() {
             >
               {(
                 [
-                  { id: "member", label: "FDNY Member" },
-                  { id: "staff", label: "Captain / Service Desk" },
+                  { id: "member", label: "FDNY end users" },
+                  { id: "staff", label: "Service desk" },
                 ] as const
               ).map((t) => (
                 <button
@@ -165,7 +168,7 @@ function LoginPage() {
             <p className="mt-3 text-sm text-muted-foreground">
               {mode === "member"
                 ? "Self-service for your own assigned equipment. Use your Employee ID, login or department email."
-                : "Service-desk view: case queue, fleet and inventory. Requires a service-desk account."}
+                : "Service desk: dashboard, cases, device fleet, inventory and reporting on behalf of a member."}
             </p>
 
             {formError ? (

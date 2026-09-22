@@ -24,7 +24,7 @@ export function Footer() {
               to="/staff"
               className="font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
-              Service Desk View
+              Service desk
             </Link>
           ) : null}
         </nav>

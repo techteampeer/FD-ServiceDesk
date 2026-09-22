@@ -181,12 +181,56 @@ export interface GlpiTicket {
 
 /* ---------------- endpoints ---------------- */
 /** Identifies a member by login, employee/badge number or e-mail. */
-export function identifyUser(identifier: string): Promise<{ user: GlpiUser }> {
-  return request<{ user: GlpiUser }>("/api/identify", {
+/** How this GLPI instance can authenticate; drives the sign-in screen's copy. */
+export interface AuthCapabilities {
+  credentialLogin: boolean;
+  mechanism: string;
+  note: string;
+}
+
+export interface AuthResult {
+  user: GlpiUser;
+  auth: { mode: string; passwordVerified: boolean; reason: string | null };
+}
+
+export function getAuthCapabilities(): Promise<AuthCapabilities> {
+  return request<AuthCapabilities>("/api/auth/capabilities");
+}
+
+/**
+ * Signs in against GLPI through /api/identify, which resolves the identifier
+ * and has GLPI validate the password. The password is sent once and is never
+ * written to localStorage or any other browser storage.
+ */
+export function loginUser(identifier: string, password: string): Promise<AuthResult> {
+  return request<AuthResult>("/api/identify", {
     method: "POST",
-    body: JSON.stringify({ identifier }),
+    body: JSON.stringify({ identifier, password }),
   });
 }
+
+/** A real GLPI user found by the service-desk search. */
+export interface GlpiUserMatch {
+  id: number;
+  login: string;
+  displayName: string;
+  employeeId: string | null;
+  email: string | null;
+  locationId: number | null;
+  matchedOn: string;
+  role: string;
+  label: string;
+}
+
+/** Service-desk only: finds GLPI users by login, employee number or email. */
+export async function searchUsers(query: string): Promise<GlpiUserMatch[]> {
+  const { users } = await request<{ users: GlpiUserMatch[] }>(
+    `/api/users/search?q=${encodeURIComponent(query)}`,
+  );
+  return users;
+}
+
+
 
 export async function getUserDevices(userId: number | string): Promise<GlpiDevice[]> {
   const { devices } = await request<{ devices: GlpiDevice[] }>(

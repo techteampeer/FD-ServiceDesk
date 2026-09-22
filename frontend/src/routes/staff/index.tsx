@@ -218,7 +218,7 @@ function StaffPage() {
         theme="navy"
         brandSubtitle="Service Desk Operations"
         items={staffNav}
-        user={navUser ?? { name: "Service Desk", initials: "SD" }}
+        user={navUser ?? { name: "Service desk", initials: "SD" }}
         accountArea="staff"
       />
 
