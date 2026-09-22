@@ -4,6 +4,7 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import { spawn } from "child_process";
+import fs from "fs";
 
 dotenv.config();
 
@@ -17,12 +18,32 @@ const NITRO_PORT = process.env.NITRO_PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 1. Spawn Nitro SSR Server with explicit logging listeners and 0.0.0.0 binding
+// 1. Diagnostic: Check Nitro SSR directory contents
 const nitroDir = path.join(__dirname, "frontend", ".output", "server");
+let entryFile = "index.mjs"; // Default expectation
 
-console.log(`Starting Nitro SSR process from: ${nitroDir}`);
+console.log(`[Diagnostic] Checking Nitro directory: ${nitroDir}`);
 
-const nitroProcess = spawn("node", ["index.mjs"], {
+try {
+  if (fs.existsSync(nitroDir)) {
+    const files = fs.readdirSync(nitroDir);
+    console.log(`[Diagnostic] Files found in ${nitroDir}:`, files.join(", "));
+    
+    // Automatically adjust entry file based on Vite/Nitro output
+    if (files.includes("server.mjs")) entryFile = "server.mjs";
+    else if (files.includes("index.js")) entryFile = "index.js";
+    else if (files.includes("server.js")) entryFile = "server.js";
+  } else {
+    console.error(`[Diagnostic] CRITICAL: Directory ${nitroDir} does not exist!`);
+  }
+} catch (err) {
+  console.error(`[Diagnostic] Error reading directory:`, err);
+}
+
+// 2. Spawn Nitro SSR Server
+console.log(`Starting Nitro SSR process using file: ${entryFile}`);
+
+const nitroProcess = spawn("node", [entryFile], {
   cwd: nitroDir,
   env: {
     ...process.env,
@@ -43,8 +64,12 @@ nitroProcess.stderr.on("data", (data) => {
   console.error(`[Nitro STDERR]: ${data.toString().trim()}`);
 });
 
+nitroProcess.on("error", (err) => {
+  console.error(`[Nitro ERROR]: Failed to start process:`, err);
+});
+
 nitroProcess.on("exit", (code, signal) => {
-  console.error(`Nitro SSR process exited with code ${code} and signal ${signal}`);
+  console.error(`[Nitro EXIT]: Process exited with code ${code} and signal ${signal}`);
 });
 
 // Import Backend API Routes
@@ -54,7 +79,7 @@ import locationRoute from "./src/routes/location.js";
 import resetSimRoute from "./src/routes/resetSim.js";
 import reportRoute from "./src/routes/report.js";
 
-// 2. Backend API Routes
+// 3. Backend API Routes
 app.use("/api/identify", identifyRoute);
 app.use("/api/devices", devicesRoute);
 app.use("/api/location", locationRoute);
@@ -69,11 +94,11 @@ app.get("/api/config", (req, res) => {
   });
 });
 
-// 3. Serve Static Assets directly via Express
+// 4. Serve Static Assets directly via Express
 const publicPath = path.join(__dirname, "frontend", ".output", "public");
 app.use(express.static(publicPath));
 
-// 4. Reverse Proxy UI Requests to Nitro SSR
+// 5. Reverse Proxy UI Requests to Nitro SSR
 app.use(async (req, res, next) => {
   if (req.path.startsWith("/api")) return next();
 
@@ -124,7 +149,7 @@ app.use(async (req, res, next) => {
   }
 });
 
-// 5. Delay Express port binding until Nitro is active
+// 6. Delay Express port binding until Nitro is active
 async function waitForNitro(url, maxRetries = 20, intervalMs = 500) {
   for (let i = 1; i <= maxRetries; i++) {
     try {
