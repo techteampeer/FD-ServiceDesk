@@ -19,11 +19,11 @@ const __dirname = path.dirname(__filename);
 // ==========================================
 // 1. Backend API Routes
 // ==========================================
-import identifyRoute from "./src/routes/identify.js";
-import devicesRoute from "./src/routes/devices.js";
-import locationRoute from "./src/routes/location.js";
-import resetSimRoute from "./src/routes/resetSim.js";
-import reportRoute from "./src/routes/report.js";
+import identifyRoute from "./backend/src/routes/identify.js";
+import devicesRoute from "./backend/src/routes/devices.js";
+import locationRoute from "./backend/src/routes/location.js";
+import resetSimRoute from "./backend/src/routes/resetSim.js";
+import reportRoute from "./backend/src/routes/report.js";
 
 app.use("/api/identify", identifyRoute);
 app.use("/api/devices", devicesRoute);
