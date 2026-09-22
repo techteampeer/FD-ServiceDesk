@@ -9,6 +9,9 @@ RUN npm install --legacy-peer-deps
 
 COPY frontend/ ./
 ENV VITE_API_BASE_URL=""
+# --- LÍNEA NUEVA ---
+ENV NITRO_PRESET="node-server" 
+# -------------------
 RUN npm run build
 
 # ==========================================
