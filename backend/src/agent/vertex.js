@@ -118,21 +118,57 @@ const DECLARATIONS = [
 export const MAX_CALLS_PER_MESSAGE = 2;
 
 /**
- * Generation settings, from the installed @google/genai types:
- *   thinkingConfig.thinkingBudget - "0 is DISABLED"; allowed on Flash models.
+ * Generation settings, checked against the installed @google/genai types:
+ *   thinkingConfig.thinkingLevel (MINIMAL | LOW | MEDIUM | HIGH) - the control
+ *     for Gemini 3.x models. Flash gets MINIMAL, the lowest level. The budget
+ *     control is not sent to them, so the two are never mixed.
+ *   thinkingConfig.thinkingBudget - "0 is DISABLED"; kept for Gemini 2.x Flash.
  *   httpOptions.retryOptions.attempts - "If 0 or 1, it means no retries. If not
- *   specified, default to 5."
+ *     specified, default to 5."
  *   httpOptions.timeout - milliseconds.
- * Non-Flash models keep their default thinking and get a larger output limit.
+ * Flash models keep the 400-token output limit; other models get 1024.
+ * The level is passed as its string value so the SDK is not loaded here.
  */
 export function generationSettings(model, timeoutMs) {
-  const flash = /flash/i.test(String(model ?? ""));
+  const name = String(model ?? "").trim().toLowerCase().replace(/^publishers\/google\/models\//, "");
+  const flash = /flash/.test(name);
+  const major = Number((name.match(/^gemini-(\d+)/) ?? [])[1] ?? 0);
+  const thinkingConfig = major >= 3 ? { thinkingLevel: flash ? "MINIMAL" : "LOW" } : flash ? { thinkingBudget: 0 } : null;
   return {
     temperature: 0.3,
     maxOutputTokens: flash ? 400 : 1024,
-    ...(flash ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+    ...(thinkingConfig ? { thinkingConfig } : {}),
     httpOptions: { timeout: timeoutMs, retryOptions: { attempts: 1 } },
   };
+}
+
+/**
+ * The model turn to send back with a tool result, and one functionResponse for
+ * every function call in it. When the model's own content is available it is
+ * replayed verbatim: Gemini 3.x signs its function-call parts (thoughtSignature)
+ * and rejects a replayed call without the signature. Otherwise the calls are
+ * rebuilt from what the model requested, with their ids.
+ */
+function replayFor(replay, toolName, result) {
+  const original = replay?.content?.parts?.some((p) => p?.functionCall) ? replay.content : null;
+  let calls = original ? original.parts.filter((p) => p?.functionCall).map((p) => p.functionCall) : replay?.calls ?? [];
+  if (!calls.length) calls = [{ name: toolName, args: {} }];
+  const modelTurn = original
+    ? { role: "model", parts: original.parts }
+    : { role: "model", parts: calls.map((fc) => ({ functionCall: { name: fc.name, args: fc.args ?? {}, ...(fc.id ? { id: fc.id } : {}) } })) };
+  const responses = calls.map((fc) => ({
+    functionResponse: {
+      name: fc.name,
+      ...(fc.id ? { id: fc.id } : {}),
+      response:
+        fc.name === toolName
+          ? toolView(toolName, result)
+          : fc.name === SUGGEST.name
+            ? { shown: true }
+            : { error: "This tool is not available to the assistant." },
+    },
+  }));
+  return { modelTurn, responses };
 }
 
 class BudgetError extends Error {}
@@ -319,7 +355,13 @@ export function createVertexDriver({ config = {}, generate = null, log = console
     });
     stats.liveRequests += 1;
     const r = await client.models.generateContent(request);
-    return { text: r.text, functionCalls: r.functionCalls ?? [], usage: r.usageMetadata ?? null };
+    return {
+      text: r.text,
+      functionCalls: r.functionCalls ?? [],
+      usage: r.usageMetadata ?? null,
+      // The model's exact turn, kept so the narration call can replay it.
+      content: r.candidates?.[0]?.content ?? null,
+    };
   }
   const call = generate ?? liveGenerate;
 
@@ -445,6 +487,9 @@ export function createVertexDriver({ config = {}, generate = null, log = console
       }
     }
 
+    // Kept for the narration call, which must return this exact model turn.
+    if (tool) session.vertexTurn.replay = { content: res.content ?? null, calls: res.functionCalls ?? [] };
+
     const actions = offersFrom(offerIds, session, intent);
 
     // The model tried to act directly. Whatever it said ("opening a ticket...")
@@ -484,17 +529,9 @@ export function createVertexDriver({ config = {}, generate = null, log = console
     if (!turn || turn.calls >= MAX_CALLS_PER_MESSAGE) return facts;
     const lastUser = [...(session.history ?? [])].reverse().find((h) => h.role === "user")?.text ?? "";
     const guidance = formatGuidance(retrieveGuidance({ text: lastUser, intent: READ_TOOLS[toolName].intent }));
+    const { modelTurn, responses } = replayFor(turn.replay, toolName, result);
     try {
-      const res = await ask(
-        session,
-        [
-          ...historyContents(session),
-          { role: "model", parts: [{ functionCall: { name: toolName, args: {} } }] },
-          { role: "user", parts: [{ functionResponse: { name: toolName, response: toolView(toolName, result) } }] },
-        ],
-        false,
-        guidance,
-      );
+      const res = await ask(session, [...historyContents(session), modelTurn, { role: "user", parts: responses }], false, guidance);
       const message = cleanText(res?.text);
       usageLog(turn, { call: res.call, ms: res.ms, tool: toolName, usage: res.usage, kind: "narration", fallback: !message, reason: message ? null : "empty model reply" });
       return { ...facts, message: message || facts.message, ...(message ? {} : { _agent: { fallback: true } }) };

@@ -18,16 +18,18 @@
  *
  * Configuration (Claudio's variable names are canonical):
  *   GOOGLE_CLOUD_PROJECT  required in vertex mode (itservicedesk-502618)
- *   VERTEX_LOCATION       default us-central1
- *   VERTEX_MODEL          required in vertex mode - there is deliberately no
- *                         built-in default, so no model is ever chosen silently
+ *   VERTEX_LOCATION       default us - the multi-region endpoint, which the SDK
+ *                         serves from aiplatform.us.rep.googleapis.com
+ *   VERTEX_MODEL          required in vertex mode (gemini-3.5-flash) - there is
+ *                         deliberately no built-in default, so no model is ever
+ *                         chosen silently
  *   AI_TIMEOUT_MS         per model request, default 15000
  * The earlier names GCP_PROJECT / GCP_LOCATION / GEMINI_MODEL are read only as
  * a fallback when Claudio's name is not set.
  *
- * A retired model (the Gemini 1.x families) is refused before any request: the
- * simulator keeps answering and the log says which variable to change. It is
- * never swapped for another model automatically.
+ * A Gemini 1.x value is still refused before any request, as a safety net for
+ * a stale configuration: the simulator keeps answering and the log says which
+ * variable to change. A model is never swapped for another automatically.
  */
 import * as simulator from "./simulator.js";
 import { createVertexDriver } from "./vertex.js";
@@ -52,7 +54,7 @@ export function vertexConfig() {
   const model = env("VERTEX_MODEL", "GEMINI_MODEL");
   return {
     project: env("GOOGLE_CLOUD_PROJECT", "GCP_PROJECT"),
-    location: env("VERTEX_LOCATION", "GCP_LOCATION") ?? "us-central1",
+    location: env("VERTEX_LOCATION", "GCP_LOCATION") ?? "us",
     model,
     retired: retiredModelReason(model),
     timeoutMs: Number(process.env.AI_TIMEOUT_MS) || 15000,
