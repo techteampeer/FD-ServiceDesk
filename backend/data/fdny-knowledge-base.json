@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "name": "FDNY IT Service Desk - assistant knowledge base",
+  "purpose": "Guidance for the Vertex assistant on the workflows this portal actually supports. It is NOT live data: members, devices, locations, tickets and SIM/carrier details always come from GLPI and the assistant's tools. Add entries only for behaviour the application really implements.",
+  "entries": [
+    {
+      "id": "KB-SCOPE-001",
+      "topics": ["general"],
+      "always": true,
+      "title": "Questions outside what this assistant can do",
+      "keywords": ["policy", "procedure", "how long", "phone number", "contact", "who", "when", "repair time", "replacement"],
+      "guidance": "Answer only from this knowledge base, the FDNY context and tool results. For anything they do not cover - department policy, repair or replacement times, contact details, team names, procedures not described here - say you don't have that information and offer to open a service ticket so the service desk can answer. Never invent a procedure, phone number, response time or team."
+    },
+    {
+      "id": "KB-CONN-001",
+      "topics": ["connectivity"],
+      "title": "Cellular connectivity problems (no service, dropping data)",
+      "keywords": ["signal", "no service", "no data", "bars", "network", "connection", "offline", "dropping", "cellular", "internet"],
+      "guidance": "Run the connectivity diagnostic on the selected device. It is simulated: it uses the carrier and line from the GLPI SIM/line record when one exists, otherwise the carrier figures are simulated demo telemetry - say which. If the result is degraded or failed, offer a device reset. If the line looks healthy but the member still has no service, a reset is the usual next step. After each step, ask what the member sees now."
+    },
+    {
+      "id": "KB-CONN-002",
+      "topics": ["connectivity"],
+      "title": "Checks the member can do themselves",
+      "keywords": ["still", "not working", "airplane", "restart", "area", "others", "station"],
+      "guidance": "If service is still down after a reset, suggest switching airplane mode on and off, and checking whether others at the station have signal - that tells the device apart from the area. These are suggestions for the member to try; never report their result yourself. If the problem remains after that, offer a service ticket for a technician."
+    },
+    {
+      "id": "KB-ESIM-001",
+      "topics": ["connectivity"],
+      "title": "SIM and eSIM questions",
+      "keywords": ["esim", "sim", "profile", "line", "iccid", "number", "msisdn", "physical sim", "embedded"],
+      "guidance": "GLPI may hold a SIM/line record for a device: carrier, SIM type (physical or embedded) and line number. State only what the diagnostic returns from GLPI. If GLPI holds no SIM record for the device, say so - do not guess a carrier, number or SIM type. The reset adapts to the record: an eSIM profile refresh, a physical-SIM reprovision, or a generic device network reset when there is no SIM record. All of these are simulated."
+    },
+    {
+      "id": "KB-CARRIER-001",
+      "topics": ["connectivity"],
+      "title": "FirstNet and Verizon Frontline",
+      "keywords": ["firstnet", "verizon", "frontline", "carrier", "att", "at&t"],
+      "guidance": "FDNY lines in this catalog are on FirstNet or Verizon Frontline, as recorded on the GLPI line record. Name the carrier only from the diagnostic result. No carrier system is contacted in this demo: diagnostics and resets are simulated, and must be described that way."
+    },
+    {
+      "id": "KB-RESET-001",
+      "topics": ["connectivity"],
+      "title": "Simulated device reset",
+      "keywords": ["reset", "reboot", "refresh", "reprovision", "fix", "restore"],
+      "guidance": "A reset is only ever offered as a button; the member confirms by tapping 'Reset this device'. Every reset is recorded as a real GLPI ticket on the member's device: closed automatically when the simulated reset completes, or left open for the service desk when it cannot reach the device (assets GLPI flags Lost or stolen). After a completed reset, ask whether service is back. After a failed one, the issue is already logged with the service desk - do not suggest a duplicate ticket unless something has changed."
+    },
+    {
+      "id": "KB-LOST-001",
+      "topics": ["lost"],
+      "title": "Missing or misplaced device",
+      "keywords": ["lost", "missing", "misplaced", "left", "find", "where", "locate", "location", "stolen", "hospital", "apparatus", "rig"],
+      "guidance": "Look up the device. The location shown is the device's assigned station and its coordinates in GLPI - not a live GPS fix; last check-in, battery and accuracy are simulated. Ask whether that matches where the member last used it. If not, ask where they last had it (on the apparatus, at a hospital, back at quarters) and suggest checking there. GLPI's status may already say Lost or stolen, or In repair - mention it when it does. If the device does not turn up, offer a recovery ticket."
+    },
+    {
+      "id": "KB-TICKET-001",
+      "topics": ["tickets"],
+      "title": "Creating a service ticket",
+      "keywords": ["ticket", "report", "escalate", "technician", "service desk", "open a case", "help desk"],
+      "guidance": "A service ticket is created only when the member taps 'Create service ticket'. It is a real GLPI ticket with the member as requester and the selected device linked with its GLPI type. Never quote a ticket number unless a tool result in this conversation returned it. After it is created, the member can follow it in My Cases."
+    },
+    {
+      "id": "KB-CASES-001",
+      "topics": ["tickets"],
+      "title": "Following up in My Cases",
+      "keywords": ["my cases", "status", "update", "follow up", "follow-up", "progress", "existing ticket", "check on"],
+      "guidance": "My Cases lists the tickets where the member is the requester, with their GLPI status; a newly created ticket appears there straight away. The assistant cannot see other members' tickets and cannot change a ticket's status."
+    },
+    {
+      "id": "KB-DESK-001",
+      "topics": ["service-desk", "tickets"],
+      "title": "Reporting on behalf of another member",
+      "keywords": ["on behalf", "for someone", "another member", "colleague", "my partner", "someone else", "for him", "for her"],
+      "guidance": "FDNY members can only report for themselves. Service desk staff can raise a ticket for a member with 'Report for a Member': search GLPI by login, employee number, name or email, confirm the person, choose one of their assigned devices, and submit. The member stays the GLPI requester and the operator is recorded on the ticket. If a member asks to report for a colleague, explain this and suggest the colleague signs in themselves or asks the service desk."
+    },
+    {
+      "id": "KB-INV-001",
+      "topics": ["inventory"],
+      "title": "Equipment identifiers and inventory tags",
+      "keywords": ["tag", "inventory", "identifier", "label", "barcode", "serial", "btds", "asset number", "wrong number", "not recognized"],
+      "guidance": "BTDS inventory tags have the form BTDSYYYY###### - the letters BTDS, a four-digit year, then six digits. Many assets have no inventory tag and are identified by their asset name only. Validate what the member typed against the GLPI catalog: an exact match first, otherwise a close suggestion to confirm or reject. Confirming a suggestion only corrects what they typed - the GLPI record is unchanged. Writing an inventory number to an asset is a real GLPI change and needs its own explicit confirmation. If nothing matches, ask them to type it again exactly as printed, or offer an Asset Management ticket."
+    },
+    {
+      "id": "KB-DEVICE-001",
+      "topics": ["devices", "lost", "connectivity"],
+      "title": "Device types in GLPI",
+      "keywords": ["tablet", "epcr", "phone", "cellphone", "smartphone", "handset", "computer", "device type"],
+      "guidance": "FDNY field devices are recorded in GLPI either as Computer (type Tablet) or as Phone (type ePCR Tablet, Smartphone or Cellphone). Talk to the member using GLPI's type name - tablet, ePCR tablet, cellphone - rather than the raw record type. Checks and actions always apply to the device the member has selected."
+    },
+    {
+      "id": "KB-ESC-001",
+      "topics": ["general", "connectivity", "lost", "inventory", "tickets"],
+      "title": "When to keep troubleshooting and when to offer a ticket",
+      "keywords": ["escalate", "ticket", "still", "give up", "technician", "doesn't work", "nothing works"],
+      "guidance": "Keep going while there is a supported next step: diagnostic, then reset, then the member's own checks. Offer a service ticket when those have not helped, when a missing device has not turned up, or whenever the member asks for one. Never push a ticket just to end the conversation - the member decides when it is finished."
+    }
+  ]
+}

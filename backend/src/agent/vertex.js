@@ -30,6 +30,7 @@
  * here runs, loads or connects in AI_MODE=simulated.
  */
 import * as simulator from "./simulator.js";
+import { formatGuidance, retrieveGuidance } from "./knowledge.js";
 
 export const DRIVER_NAME = "vertex-gemini";
 
@@ -115,7 +116,7 @@ const STAGE_WORDS = {
   ticketed: "a service ticket was opened",
 };
 
-export function systemPrompt(context) {
+export function systemPrompt(context, guidance = "") {
   return `You are the FDNY IT Service Assistant. You work like an active IT support technician helping an FDNY member with their department equipment, in a mobile chat.
 
 HOW TO HELP
@@ -130,6 +131,7 @@ FACTS - NEVER INVENT
 - The FDNY CONTEXT below comes from GLPI, the source of truth for the member, their devices, locations, tickets and SIM/carrier records. Use only those facts.
 - Never invent device state, locations, coordinates, GLPI records, ticket numbers, reset results or carrier telemetry. If you do not have a fact, say so, or run the matching tool.
 - Tool results marked simulated (check-in, battery, accuracy, carrier diagnostics, resets) are demo simulations, not live telemetry. Say so when you use them, and keep GLPI facts and simulated figures clearly apart.
+- The FDNY KNOWLEDGE BASE, when present, is guidance on what to check and suggest. It is never live state and never overrides the FDNY CONTEXT or a tool result.
 
 TOOLS
 - lookupDevice, connectivityDiagnostic and validateAssetTag read information. They always act on the member's currently selected device; you cannot choose a different device or member.
@@ -137,7 +139,9 @@ TOOLS
 - There is no sound ping or sound trigger. Do not offer one.
 
 FDNY CONTEXT (from GLPI)
-${context}`;
+${context}${guidance ? `
+
+${guidance}` : ""}`;
 }
 
 function contextOf(session) {
@@ -272,13 +276,13 @@ export function createVertexDriver({ config = {}, generate = null, log = console
   }
   const call = generate ?? liveGenerate;
 
-  async function ask(session, contents, withTools) {
+  async function ask(session, contents, withTools, guidance = "") {
     stats.modelRequests += 1;
     const request = {
       model: config.model ?? "gemini-2.5-flash",
       contents,
       config: {
-        systemInstruction: systemPrompt(contextOf(session)),
+        systemInstruction: systemPrompt(contextOf(session), guidance),
         temperature: 0.3,
         maxOutputTokens: 400,
         ...(withTools ? { tools: [{ functionDeclarations: DECLARATIONS }], toolConfig: { functionCallingConfig: { mode: "AUTO" } } } : {}),
@@ -306,9 +310,12 @@ export function createVertexDriver({ config = {}, generate = null, log = console
   }
 
   async function plan({ session, text }) {
+    // Only the knowledge-base entries relevant to this message go in the prompt.
+    const topic = session.intent ?? simulator.classify(text);
+    const guidance = formatGuidance(retrieveGuidance({ text, intent: topic }));
     let res;
     try {
-      res = await ask(session, historyContents(session), true);
+      res = await ask(session, historyContents(session), true, guidance);
     } catch (e) {
       return fallback(simulator.plan({ session, text }), e);
     }
@@ -372,6 +379,8 @@ export function createVertexDriver({ config = {}, generate = null, log = console
   async function narrate(toolName, result, session) {
     const facts = simulator.narrate(toolName, result, session);
     if (WRITE_RESULTS.has(toolName) || !READ_TOOLS[toolName]) return facts;
+    const lastUser = [...(session.history ?? [])].reverse().find((h) => h.role === "user")?.text ?? "";
+    const guidance = formatGuidance(retrieveGuidance({ text: lastUser, intent: READ_TOOLS[toolName].intent }));
     try {
       const res = await ask(
         session,
@@ -381,6 +390,7 @@ export function createVertexDriver({ config = {}, generate = null, log = console
           { role: "user", parts: [{ functionResponse: { name: toolName, response: toolView(toolName, result) } }] },
         ],
         false,
+        guidance,
       );
       const message = cleanText(res?.text);
       return { ...facts, message: message || facts.message };
