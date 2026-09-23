@@ -16,16 +16,18 @@
  * production; `gcloud auth application-default login` locally). No key file is
  * read and none should be added.
  *
- * Configuration (Claudio's variable names are canonical):
- *   GOOGLE_CLOUD_PROJECT  required in vertex mode (itservicedesk-502618)
- *   VERTEX_LOCATION       default us - the multi-region endpoint, which the SDK
- *                         serves from aiplatform.us.rep.googleapis.com
- *   VERTEX_MODEL          required in vertex mode (gemini-3.5-flash) - there is
- *                         deliberately no built-in default, so no model is ever
- *                         chosen silently
- *   AI_TIMEOUT_MS         per model request, default 15000
- * The earlier names GCP_PROJECT / GCP_LOCATION / GEMINI_MODEL are read only as
- * a fallback when Claudio's name is not set.
+ * Configuration - the names and values of the working ITServiceDesk-ENG
+ * service, as provided by Claudio:
+ *   GCP_PROJECT     required in vertex mode (itservicedesk-502618)
+ *   GCP_LOCATION    default us-central1
+ *   GEMINI_MODEL    required in vertex mode (gemini-2.5-flash) - there is
+ *                   deliberately no built-in default, so no model is ever chosen
+ *                   silently
+ *   AI_TIMEOUT_MS   per model request, default 15000
+ *
+ * MOCK, the old service's switch, is deliberately NOT read: MOCK=false does not
+ * turn Vertex on here. Only AI_MODE=vertex does - that explicit switch is the
+ * billing protection.
  *
  * A Gemini 1.x value is still refused before any request, as a safety net for
  * a stale configuration: the simulator keeps answering and the log says which
@@ -36,8 +38,7 @@ import { createVertexDriver } from "./vertex.js";
 
 export const aiMode = () => (String(process.env.AI_MODE ?? "").trim().toLowerCase() === "vertex" ? "vertex" : "simulated");
 
-/** Claudio's name first; the earlier name only as a fallback. */
-const env = (name, legacy) => (process.env[name] ?? "").trim() || (process.env[legacy] ?? "").trim() || null;
+const env = (name) => (process.env[name] ?? "").trim() || null;
 
 /**
  * Gemini 1.x models are retired on Vertex AI. Returns the reason, or null.
@@ -46,15 +47,15 @@ const env = (name, legacy) => (process.env[name] ?? "").trim() || (process.env[l
 export function retiredModelReason(model) {
   const m = String(model ?? "").trim().replace(/^publishers\/google\/models\//i, "");
   return /^gemini-1\.\d/i.test(m)
-    ? `VERTEX_MODEL=${m} is a retired Gemini 1.x model that Vertex AI no longer serves. Confirm a supported model with Claudio and set VERTEX_MODEL before enabling AI_MODE=vertex.`
+    ? `GEMINI_MODEL=${m} is a retired Gemini 1.x model that Vertex AI no longer serves. Confirm a supported model with Claudio and set GEMINI_MODEL before enabling AI_MODE=vertex.`
     : null;
 }
 
 export function vertexConfig() {
-  const model = env("VERTEX_MODEL", "GEMINI_MODEL");
+  const model = env("GEMINI_MODEL");
   return {
-    project: env("GOOGLE_CLOUD_PROJECT", "GCP_PROJECT"),
-    location: env("VERTEX_LOCATION", "GCP_LOCATION") ?? "us",
+    project: env("GCP_PROJECT"),
+    location: env("GCP_LOCATION") ?? "us-central1",
     model,
     retired: retiredModelReason(model),
     timeoutMs: Number(process.env.AI_TIMEOUT_MS) || 15000,
@@ -63,7 +64,7 @@ export function vertexConfig() {
 
 // Said once at startup, whatever the mode: the configured model cannot be used.
 {
-  const retired = retiredModelReason(env("VERTEX_MODEL", "GEMINI_MODEL"));
+  const retired = retiredModelReason(env("GEMINI_MODEL"));
   if (retired) console.warn(`[agent] ${retired} (AI_MODE=${aiMode()}; no model is called)`);
 }
 
@@ -78,7 +79,7 @@ export function activeDriver() {
     const cfg = vertexConfig();
     console.log(
       mode === "vertex"
-        ? `[agent] AI_MODE=vertex - ${cfg.model ?? "VERTEX_MODEL not set"} on Vertex AI (${cfg.project ?? "GOOGLE_CLOUD_PROJECT not set"}, ${cfg.location}); simulator fallback on any error${cfg.retired ? " - model refused: retired" : ""}`
+        ? `[agent] AI_MODE=vertex - ${cfg.model ?? "GEMINI_MODEL not set"} on Vertex AI (${cfg.project ?? "GCP_PROJECT not set"}, ${cfg.location}); simulator fallback on any error${cfg.retired ? " - model refused: retired" : ""}`
         : "[agent] AI_MODE=simulated - deterministic simulator; Vertex AI is not initialised",
     );
   }

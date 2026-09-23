@@ -118,11 +118,12 @@ const DECLARATIONS = [
 export const MAX_CALLS_PER_MESSAGE = 2;
 
 /**
- * Generation settings, checked against the installed @google/genai types:
- *   thinkingConfig.thinkingLevel (MINIMAL | LOW | MEDIUM | HIGH) - the control
- *     for Gemini 3.x models. Flash gets MINIMAL, the lowest level. The budget
- *     control is not sent to them, so the two are never mixed.
- *   thinkingConfig.thinkingBudget - "0 is DISABLED"; kept for Gemini 2.x Flash.
+ * Generation settings, checked against the installed @google/genai types.
+ * The configured model is gemini-2.5-flash (Gemini 2.x path):
+ *   thinkingConfig.thinkingBudget - "0 is DISABLED"; used for Gemini 2.x Flash.
+ * Kept for compatibility only, should a Gemini 3.x model ever be configured:
+ *   thinkingConfig.thinkingLevel (MINIMAL | LOW | MEDIUM | HIGH) - Gemini 3.x's
+ *     control; Flash gets MINIMAL. The two controls are never mixed.
  *   httpOptions.retryOptions.attempts - "If 0 or 1, it means no retries. If not
  *     specified, default to 5."
  *   httpOptions.timeout - milliseconds.
@@ -335,14 +336,14 @@ export class VertexConfigError extends Error {}
 export function createVertexDriver({ config = {}, generate = null, log = console } = {}) {
   const stats = { modelRequests: 0, liveRequests: 0, sdkLoads: 0, fallbacks: 0, rejectedTools: [], messages: 0 };
   let client = null;
-  // No default: the model is whatever VERTEX_MODEL names, never a silent choice.
+  // No default: the model is whatever GEMINI_MODEL names, never a silent choice.
   const model = config.model ?? null;
   const timeoutMs = config.timeoutMs ?? 15000;
 
   async function liveGenerate(request) {
     // Every check happens before the SDK is even loaded.
-    if (!config.project) throw new VertexConfigError("AI_MODE=vertex but GOOGLE_CLOUD_PROJECT is not set");
-    if (!config.model) throw new VertexConfigError("AI_MODE=vertex but VERTEX_MODEL is not set");
+    if (!config.project) throw new VertexConfigError("AI_MODE=vertex but GCP_PROJECT is not set");
+    if (!config.model) throw new VertexConfigError("AI_MODE=vertex but GEMINI_MODEL is not set");
     if (config.retired) throw new VertexConfigError(config.retired);
     const { GoogleGenAI } = await import("@google/genai");
     stats.sdkLoads += 1;
