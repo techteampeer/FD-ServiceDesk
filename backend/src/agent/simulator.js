@@ -26,7 +26,10 @@ const ACT = {
   diagnose: { id: "diagnose", label: "Run connectivity diagnostic" },
   reset: { id: "reset-device", label: "Reset this device" },
   escalate: { id: "escalate", label: "Create service ticket" },
-  resolved: { id: "resolved", label: "It is resolved" },
+  resolved: { id: "resolved", label: "It's working now" },
+  foundIt: { id: "resolved", label: "Found it" },
+  stillBroken: { id: "still-broken", label: "Still not working" },
+  notThere: { id: "not-there", label: "It's not there" },
   confirmTag: { id: "confirm-tag", label: "Yes, that is my equipment" },
   rejectTag: { id: "reject-tag", label: "No, that is not my equipment" },
   applyTag: { id: "apply-tag", label: "Write this inventory number to the asset" },
@@ -59,24 +62,186 @@ const kindWord = (d) => {
   return d?.itemType === "Computer" ? "tablet" : d?.itemType === "Phone" ? "cellphone" : "device";
 };
 
+/*
+ * Conversation stage. The assistant should behave like a technician who stays
+ * with the member until the problem is actually solved: after every check or
+ * action it asks what the member is seeing, and it only wraps up when the
+ * member says it is fixed. The stage records where that troubleshooting is,
+ * and is tied to the device it was recorded on - switching device starts over,
+ * so a follow-up can never be applied to the wrong asset.
+ */
+const deviceKey = (d) => (d ? `${d.itemType}:${d.id}` : null);
+const stageOf = (session) =>
+  session.slots.stageDevice && session.slots.stageDevice === deviceKey(session.device) ? session.slots.stage : null;
+const atStage = (session, stage) => ({ stage, stageDevice: deviceKey(session.device) });
+const lastTicket = (session) => session.tickets?.[session.tickets.length - 1]?.ticketId ?? null;
+
+// Checked before the topic classifier, and only once troubleshooting is under
+// way, so an opening message such as "my tablet is not working" is still a new
+// issue rather than a follow-up.
+const STILL_BROKEN =
+  /(still (not|no|can'?t|isn'?t|doesn'?t|won'?t|down|broken|failing|dead|offline|nothing)|not fixed|did ?n[o']?t (work|help|fix)|does ?n[o']?t work|same (problem|issue)|no change|no luck|(not|isn'?t) working|no (service|signal|bars|data))/;
+const RESOLVED =
+  /(fixed|(it'?s|is) working|works now|working now|resolved|sorted|all good|that did it|back (online|up)|got (it|service|signal)|found it|problem solved|good now)/;
+const NOT_THERE = /(not there|isn'?t there|wasn'?t there|not at (the )?(station|quarters))/;
+const AFFIRM = /^(yes|yeah|yep|yup|it does|that'?s right|correct|makes sense)\b/;
+
+/** The member says the problem is still there: take the next step for where we are. */
+function stillBroken(session) {
+  const d = session.device;
+  const stage = stageOf(session);
+  if (stage === "located" || stage === "searching") {
+    return {
+      intent: "lost",
+      message:
+        "Understood - time to get the service desk involved. I can open a recovery ticket with what you've told me so they can track it down.",
+      actions: [ACT.escalate, ACT.foundIt],
+      slots: atStage(session, "searching"),
+    };
+  }
+  if (stage === "reset-ok") {
+    return {
+      intent: "connectivity",
+      message:
+        "Thanks for checking. Try switching airplane mode on and off, and see whether anyone else at the station has signal - that tells us if it's the device or the area. If it's still down after that, a technician should take a look.",
+      actions: [ACT.diagnose, ACT.resolved, ACT.escalate],
+      slots: atStage(session, "still-broken"),
+    };
+  }
+  if (stage === "reset-failed") {
+    const ref = lastTicket(session);
+    return {
+      intent: "connectivity",
+      message: `Understood. The reset couldn't reach ${deviceLabel(d)}, and that's already logged with the service desk${ref ? ` as ${ref}` : ""}, so a technician will pick it up. If anything changes on the device, tell me here.`,
+      actions: [ACT.resolved],
+      slots: atStage(session, "still-broken"),
+    };
+  }
+  if (stage === "diagnosed") {
+    return {
+      intent: "connectivity",
+      message: `Let's try a reset on ${deviceLabel(d)} next - it often brings service back.`,
+      actions: [ACT.reset, ACT.escalate],
+      slots: atStage(session, "diagnosed"),
+    };
+  }
+  if (stage === "still-broken") {
+    return {
+      intent: session.intent ?? "connectivity",
+      message:
+        "Sorry it's still giving you trouble. A technician is the right next step now - I can open a service ticket with everything we've tried.",
+      actions: [ACT.escalate, ACT.resolved],
+    };
+  }
+  return {
+    intent: session.intent ?? "general",
+    message: "Sorry it's still giving you trouble. What is it doing right now?",
+    actions: [],
+    slots: { stage: null, stageDevice: null },
+  };
+}
+
+/** The member says it is fixed: acknowledge and stop - no generic sign-off. */
+function resolvedTurn(session) {
+  const intent = session.intent;
+  return {
+    intent,
+    message:
+      intent === "lost"
+        ? "Great - glad it turned up."
+        : intent === "connectivity"
+          ? "Great - glad it's back online. If the signal drops again, just tell me here."
+          : "Good to hear it's sorted.",
+    actions: [],
+    slots: atStage(session, "resolved"),
+  };
+}
+
+function notThere(session) {
+  return {
+    intent: "lost",
+    message: "Let's narrow it down. Where did you last have it - on the apparatus, at a hospital, or back at quarters?",
+    actions: [ACT.foundIt, ACT.escalate],
+    slots: atStage(session, "searching"),
+  };
+}
+
+function locationConfirmed(session) {
+  const where = session.device?.locationName ?? "its station";
+  return {
+    intent: "lost",
+    message: `Then it's most likely still at ${where}. Check the apparatus and the charging area there first, and tell me if it turns up. If it doesn't, I can open a recovery ticket.`,
+    actions: [ACT.foundIt, ACT.escalate],
+    slots: atStage(session, "searching"),
+  };
+}
+
+/** Where the member thinks they left it - kept so a recovery ticket carries it. */
+function searchingReply(session, text) {
+  const said = String(text).trim();
+  return {
+    intent: "lost",
+    message:
+      "Thanks - check there first; devices are often left in the rig or with the receiving hospital. If it doesn't turn up, I'll open a recovery ticket with that detail.",
+    actions: [ACT.foundIt, ACT.escalate],
+    slots: {
+      description: session.slots.description ? `${session.slots.description}\n${said}` : said,
+      ...atStage(session, "searching"),
+    },
+  };
+}
+
+/** GLPI's own status, stated when it changes what "missing" means. */
+function statusNote(device) {
+  const s = String(device?.status ?? "").toLowerCase();
+  if (s.includes("lost") || s.includes("stolen")) return "GLPI already has it flagged Lost or stolen, so the service desk knows it's missing. ";
+  if (s.includes("repair")) return "GLPI shows it as In repair, so it may be with the depot rather than lost. ";
+  return "";
+}
+
 /** First turn of a conversation. */
 export function greeting(session) {
   const d = session.device;
   return {
     intent: null,
     message: d
-      ? `Hi ${session.user.displayName ?? session.user.name}. I have your ${kindWord(d)} ${deviceLabel(d)} at ${d.locationName ?? "its assigned station"}. Tell me what is happening and I will try to fix it without a technician visit.`
+      ? `Hi ${session.user.displayName ?? session.user.name}. I can see your ${kindWord(d)} ${deviceLabel(d)} at ${d.locationName ?? "its assigned station"}. What's going on with it? I'll try to sort it out here, without a technician visit.`
       : `Hi ${session.user.displayName ?? session.user.name}. Pick one of your assigned devices on the left, then tell me what is happening.`,
     actions: [],
   };
 }
 
 export function plan({ session, text }) {
+  const t = String(text ?? "").toLowerCase().trim();
+  const stage = stageOf(session);
   const intent = classify(text);
   const d = session.device;
 
+  // Follow-ups on the device already being worked on come first, so "still not
+  // working" continues the troubleshooting instead of starting a new topic.
+  // They apply only while troubleshooting is open and the member is still on
+  // the same topic: once something is resolved or ticketed, or the member names
+  // a different problem ("my FirstNet connection isn't working"), it is a new
+  // issue even though it is phrased like a follow-up.
+  const active = Boolean(stage) && stage !== "resolved" && stage !== "ticketed";
+  const newTopic = ["lost", "connectivity", "inventory"].includes(intent) && intent !== session.intent;
+  if (active && !newTopic && STILL_BROKEN.test(t)) return stillBroken(session);
+  if ((active || session.intent) && !newTopic && RESOLVED.test(t)) return resolvedTurn(session);
+  if (stage === "located") {
+    if (NOT_THERE.test(t) || /^no\b/.test(t)) return notThere(session);
+    if (AFFIRM.test(t)) return locationConfirmed(session);
+  }
+  // While searching, a free-text answer is where they last had it - unless
+  // the member has moved on to a different topic.
+  if (stage === "searching" && (intent === "general" || intent === "lost")) return searchingReply(session, text);
+
   if (intent === "smalltalk") {
-    return { intent: session.intent ?? "general", message: "Happy to help. What is going on with your equipment?", actions: [] };
+    if (stage === "resolved") return { intent: session.intent, message: "You're welcome.", actions: [] };
+    return {
+      intent: session.intent ?? "general",
+      message: session.intent ? "Happy to help. Where do things stand with it now?" : "Happy to help. What's going on with your equipment?",
+      actions: [],
+    };
   }
 
   if (!d && intent !== "inventory") {
@@ -90,16 +255,16 @@ export function plan({ session, text }) {
   if (intent === "lost") {
     return {
       intent,
-      message: `Let me locate ${deviceLabel(d)}.`,
+      message: "Let me check where it is.",
       tool: { name: "lookupDevice", args: deviceArgs(d) },
-      actions: [ACT.escalate],
+      actions: [ACT.foundIt, ACT.notThere, ACT.escalate],
     };
   }
 
   if (intent === "connectivity") {
     return {
       intent,
-      message: `Checking connectivity for ${deviceLabel(d)}.`,
+      message: `Checking the connection on ${deviceLabel(d)}.`,
       tool: { name: "connectivityDiagnostic", args: deviceArgs(d) },
       actions: [ACT.reset, ACT.escalate],
     };
@@ -125,14 +290,16 @@ export function plan({ session, text }) {
   if (!session.slots.description) {
     return {
       intent,
-      message: "Understood. Describe what is happening in one or two sentences and I will open a ticket for the service desk.",
+      message:
+        "Sorry you're dealing with that. What's happening, and when did it start? If it's about signal or a missing device, I can check that directly - or open a service ticket now if you'd rather.",
       slots: { description: String(text).trim() },
       actions: [ACT.escalate],
     };
   }
   return {
     intent,
-    message: "Thanks. I have enough to open a ticket for the service desk.",
+    message:
+      "Thanks, that helps. I can't fix this one remotely, so the next step is a technician. Tap Create service ticket when you're ready and I'll pass these details to the service desk.",
     slots: { description: `${session.slots.description}\n${String(text).trim()}` },
     actions: [ACT.escalate],
   };
@@ -153,7 +320,8 @@ export function planAction({ session, action, payload = {} }) {
     case "reset-device":
       return {
         intent: "connectivity",
-        message: `Running a simulated reset on ${deviceLabel(d)}.`,
+        // The reset result itself states that it was simulated.
+        message: `Resetting ${deviceLabel(d)}.`,
         tool: { name: "resetDevice", args: { ...deviceArgs(d), simulate: payload.simulate } },
         actions: [ACT.resolved, ACT.escalate],
       };
@@ -194,7 +362,13 @@ export function planAction({ session, action, payload = {} }) {
       };
 
     case "resolved":
-      return { intent: session.intent, message: "Good - I will leave it there. Anything else?", actions: [] };
+      return resolvedTurn(session);
+
+    case "still-broken":
+      return stillBroken(session);
+
+    case "not-there":
+      return notThere(session);
 
     case "escalate":
       return {
@@ -221,7 +395,9 @@ export function narrate(toolName, result, session) {
     const loc = result.location;
     const t = result.telemetry;
     return {
-      message: `${deviceLabel(d)} is assigned to ${loc?.name ?? "an unknown station"}. The position is its GLPI location; the check-in figures beside it are simulated, since there is no MDM feed in this demo. If it is not there, I can open a recovery ticket for the service desk.`,
+      message: `Your ${kindWord(d)} ${deviceLabel(d)} is showing at ${loc?.name ?? "an unknown station"} - that's its GLPI location; the check-in details below are simulated. ${statusNote(result.device)}Does that match where you last used it? If not, I can help you narrow it down or open a recovery ticket.`,
+      actions: [ACT.foundIt, ACT.notThere, ACT.escalate],
+      slots: atStage(session, "located"),
       details: [
         { label: "Device", value: namedKind(result.device) },
         { label: "Station", value: loc?.name ?? "unknown" },
@@ -257,10 +433,13 @@ export function narrate(toolName, result, session) {
     return {
       message:
         result.state === "healthy"
-          ? `The line looks healthy. ${result.reason.detail} Simulated diagnostic - no carrier was contacted.`
+          ? `The line looks healthy. ${result.reason.detail} Simulated diagnostic - no carrier was contacted. If the device still shows no service, a reset usually clears it. Want me to run one?`
           : result.state === "unknown"
-            ? `${result.reason.detail} Simulated diagnostic - no carrier was contacted. I can still run a device reset, or open a ticket.`
-            : `${result.reason.detail} Simulated diagnostic - no carrier was contacted. I can run a reset, or open a ticket.`,
+            ? `${result.reason.detail} Simulated diagnostic - no carrier was contacted. A device reset is the usual next step. Want me to run one?`
+            : `${result.reason.detail} Simulated diagnostic - no carrier was contacted. A reset is the next step and often brings service back. Want me to run it?`,
+      actions:
+        result.state === "healthy" ? [ACT.reset, ACT.resolved, ACT.escalate] : [ACT.reset, ACT.escalate],
+      slots: atStage(session, "diagnosed"),
       details: [
         { label: "Cellular state", value: result.state === "unknown" ? "not assessable (no carrier record)" : result.state },
         { label: "Device", value: namedKind(result.device) },
@@ -278,8 +457,13 @@ export function narrate(toolName, result, session) {
   }
 
   if (toolName === "resetDevice") {
+    const recorded = result.ticketId ? ` Recorded as ${result.ticketId} (${result.ticketStatus}).` : "";
     return {
-      message: `${result.reason.detail} ${result.note}${result.ticketId ? ` Recorded as ${result.ticketId} (${result.ticketStatus}).` : ""}`,
+      message: result.success
+        ? `${result.reason.detail} ${result.note}${recorded} Give it a minute to reconnect - are you seeing service now? If not, I can take the next step or open a ticket.`
+        : `${result.reason.detail} ${result.note}${result.ticketId ? ` It's logged as ${result.ticketId} (${result.ticketStatus}), so the service desk can already see it.` : ""} Tell me what the device is doing now and we'll keep working on it.`,
+      actions: result.success ? [ACT.resolved, ACT.stillBroken, ACT.escalate] : [ACT.resolved, ACT.stillBroken],
+      slots: atStage(session, result.success ? "reset-ok" : "reset-failed"),
       details: [
         { label: "Reset type", value: result.resetType },
         { label: "Carrier record", value: result.carrierDataAvailable ? `${result.sim?.carrier ?? "on file"} · ${result.sim?.msisdn ?? "line on file"}` : "none in GLPI" },
@@ -359,7 +543,8 @@ export function narrate(toolName, result, session) {
 
   if (toolName === "escalate") {
     return {
-      message: `Ticket ${result.ticketId} is open with the service desk${result.assetLinked ? ` and linked to ${namedKind(d)}` : ""}.`,
+      message: `Ticket ${result.ticketId} is open with the service desk${result.assetLinked ? ` and linked to ${namedKind(d)}` : ""}. You can follow it in My Cases.`,
+      slots: atStage(session, "ticketed"),
       details: [
         { label: "Ticket", value: result.ticketId },
         { label: "Status", value: result.status },

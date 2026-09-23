@@ -110,7 +110,7 @@ function LandingPage() {
               <div className="mt-10 flex flex-wrap justify-center gap-3">
                 <Button asChild size="lg">
                   <Link to="/report-ticket">
-                    <TicketPlus className="size-4" /> Report a Ticket
+                    <TicketPlus className="size-4" /> Let&apos;s Get Started
                   </Link>
                 </Button>
                 {/* Service-desk entry points are only offered to staff. */}
