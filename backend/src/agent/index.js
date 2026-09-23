@@ -6,7 +6,9 @@
  * Vertex/Gemini driver means implementing plan/planAction/narrate against the
  * same Turn shape - nothing else here changes.
  *
- * Today: DRIVER = simulator. No Vertex, no Gemini, no paid API is called.
+ * The driver is chosen per turn by AI_MODE (see provider.js): the simulator by
+ * default, or the Vertex/Gemini driver when AI_MODE=vertex. Both run the same
+ * tools below and share the same confirmation rules.
  */
 import { getLocation } from "../glpi.js";
 import {
@@ -23,8 +25,7 @@ import { connectivityDiagnostic } from "../services/carrier.mock.js";
 import { resetDeviceAndRecord } from "../services/reset.js";
 import { appendHistory, createSession, getSession, setDevice } from "./session.js";
 import * as simulator from "./simulator.js";
-
-const DRIVER = simulator;
+import { activeDriver, aiMode, vertexConfig } from "./provider.js";
 
 /** Tools the driver may name. Each maps to an already-implemented service. */
 const TOOLS = {
@@ -153,7 +154,7 @@ function escalationPayload(args, session) {
 }
 
 /** Shape every endpoint returns, so the frontend has one contract. */
-function envelope(session, { message, details = [], actions = [], tool = null, result = null, ticket = null, map = null }) {
+function envelope(session, { message, details = [], actions = [], tool = null, result = null, ticket = null, map = null, agent = null }) {
   return {
     sessionId: session.id,
     message,
@@ -173,7 +174,13 @@ function envelope(session, { message, details = [], actions = [], tool = null, r
     /** What the conversation has decided, and whether GLPI was actually changed. */
     audit: session.audit,
     simulated: true,
-    agent: { driver: DRIVER.DRIVER_NAME, vertex: false, model: null },
+    agent: {
+      driver: activeDriver().DRIVER_NAME,
+      vertex: aiMode() === "vertex",
+      model: aiMode() === "vertex" ? vertexConfig().model : null,
+      /** True when the Vertex driver failed and the simulator answered instead. */
+      fallback: Boolean(agent?.fallback),
+    },
   };
 }
 
@@ -195,7 +202,7 @@ export async function startSession({ user, deviceId, itemType }) {
   }
 
   const session = createSession({ user, device, location });
-  const turn = DRIVER.greeting(session);
+  const turn = activeDriver().greeting(session);
   appendHistory(session, "assistant", turn.message);
   return envelope(session, turn);
 }
@@ -205,6 +212,7 @@ async function runTurn(session, turn) {
   if (turn.intent !== undefined) session.intent = turn.intent;
   if (turn.slots) Object.assign(session.slots, turn.slots);
 
+  const agent = { fallback: Boolean(turn._agent?.fallback) };
   let message = turn.message;
   let details = [];
   let actions = turn.actions ?? [];
@@ -217,7 +225,8 @@ async function runTurn(session, turn) {
     if (!fn) throw new Error(`Unknown agent tool: ${turn.tool.name}`);
     result = await fn(turn.tool.args ?? {}, session);
 
-    const narration = DRIVER.narrate(turn.tool.name, result, session);
+    const narration = await activeDriver().narrate(turn.tool.name, result, session);
+    if (narration._agent?.fallback) agent.fallback = true;
     if (narration.message) message = `${message} ${narration.message}`.trim();
     details = narration.details ?? [];
     map = narration.map ?? null;
@@ -242,7 +251,7 @@ async function runTurn(session, turn) {
   }
 
   appendHistory(session, "assistant", message, { details, tool: turn.tool?.name ?? null });
-  return envelope(session, { message, details, actions, tool: turn.tool?.name ?? null, result, ticket, map });
+  return envelope(session, { message, details, actions, tool: turn.tool?.name ?? null, result, ticket, map, agent });
 }
 
 export async function handleMessage({ sessionId, text, deviceId, itemType }) {
@@ -256,7 +265,7 @@ export async function handleMessage({ sessionId, text, deviceId, itemType }) {
   }
 
   appendHistory(session, "user", String(text ?? ""));
-  return runTurn(session, DRIVER.plan({ session, text }));
+  return runTurn(session, await activeDriver().plan({ session, text }));
 }
 
 export async function handleAction({ sessionId, action, payload = {}, deviceId, itemType }) {
@@ -271,7 +280,7 @@ export async function handleAction({ sessionId, action, payload = {}, deviceId, 
 
   session.lastAction = action;
   appendHistory(session, "user", `[action] ${action}`);
-  return runTurn(session, DRIVER.planAction({ session, action, payload }));
+  return runTurn(session, await activeDriver().planAction({ session, action, payload }));
 }
 
 export { getSession };
