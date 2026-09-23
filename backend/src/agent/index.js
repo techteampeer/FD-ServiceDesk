@@ -254,33 +254,67 @@ async function runTurn(session, turn) {
   return envelope(session, { message, details, actions, tool: turn.tool?.name ?? null, result, ticket, map, agent });
 }
 
+/*
+ * Repeat protection, for both drivers. A double-click, a re-sent request or a
+ * second tab must never run a turn twice: that would repeat a model call, or a
+ * write such as a reset or a ticket. While a turn is running for a session,
+ * another request is answered with a short "still working" reply; the same
+ * message or action repeated within REPEAT_WINDOW_MS gets the first answer back.
+ */
+const REPEAT_WINDOW_MS = 2500;
+
+function repeatOf(session, key) {
+  const last = session.lastRequest;
+  return last && last.key === key && Date.now() - last.at < REPEAT_WINDOW_MS ? last.response : null;
+}
+
+async function once(session, key, run) {
+  if (session.busy) {
+    return { ...envelope(session, { message: "I'm still working on your last message - one moment." }), busy: true };
+  }
+  const repeat = repeatOf(session, key);
+  if (repeat) return { ...repeat, duplicate: true };
+  session.busy = true;
+  try {
+    const response = await run();
+    session.lastRequest = { key, at: Date.now(), response };
+    return response;
+  } finally {
+    session.busy = false;
+  }
+}
+
 export async function handleMessage({ sessionId, text, deviceId, itemType }) {
   const session = getSession(sessionId);
   if (!session) return null;
 
-  // The UI may switch the selected device mid-conversation.
-  if (deviceId && (!session.device || Number(session.device.id) !== Number(deviceId) || session.device.itemType !== itemType)) {
-    const device = await resolveDevice({ deviceId, itemType });
-    if (device) setDevice(session, device);
-  }
+  return once(session, `message:${String(text ?? "").trim().toLowerCase()}:${deviceId ?? ""}`, async () => {
+    // The UI may switch the selected device mid-conversation.
+    if (deviceId && (!session.device || Number(session.device.id) !== Number(deviceId) || session.device.itemType !== itemType)) {
+      const device = await resolveDevice({ deviceId, itemType });
+      if (device) setDevice(session, device);
+    }
 
-  appendHistory(session, "user", String(text ?? ""));
-  return runTurn(session, await activeDriver().plan({ session, text }));
+    appendHistory(session, "user", String(text ?? ""));
+    return runTurn(session, await activeDriver().plan({ session, text }));
+  });
 }
 
 export async function handleAction({ sessionId, action, payload = {}, deviceId, itemType }) {
   const session = getSession(sessionId);
   if (!session) return null;
 
-  // The UI may have switched device since the last message.
-  if (deviceId && (!session.device || Number(session.device.id) !== Number(deviceId) || session.device.itemType !== itemType)) {
-    const device = await resolveDevice({ deviceId, itemType });
-    if (device) setDevice(session, device);
-  }
+  return once(session, `action:${action}:${deviceId ?? ""}`, async () => {
+    // The UI may have switched device since the last message.
+    if (deviceId && (!session.device || Number(session.device.id) !== Number(deviceId) || session.device.itemType !== itemType)) {
+      const device = await resolveDevice({ deviceId, itemType });
+      if (device) setDevice(session, device);
+    }
 
-  session.lastAction = action;
-  appendHistory(session, "user", `[action] ${action}`);
-  return runTurn(session, await activeDriver().planAction({ session, action, payload }));
+    session.lastAction = action;
+    appendHistory(session, "user", `[action] ${action}`);
+    return runTurn(session, await activeDriver().planAction({ session, action, payload }));
+  });
 }
 
 export { getSession };

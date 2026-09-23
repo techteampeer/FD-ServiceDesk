@@ -26,6 +26,18 @@
  *   - Any model error, timeout or empty answer falls back to the simulator for
  *     that turn. The conversation never breaks because the model did.
  *
+ * Cost controls:
+ *   - The model is called ONLY while answering a member's chat message: at most
+ *     two calls per message (1: reasoning / tool choice, 2: wording a read-tool
+ *     result). Greetings, button taps, page loads and every other endpoint use
+ *     no model at all. The budget is enforced per message, so no loop can
+ *     exceed it.
+ *   - No retries: the SDK retries up to 5 times by default, so every request
+ *     sets retryOptions.attempts = 1. A timeout aborts the request and the
+ *     simulator answers; nothing is regenerated.
+ *   - Flash models run with thinking disabled (thinkingBudget 0), so the short
+ *     output limit is spent on the reply rather than on internal reasoning.
+ *
  * The Google SDK is imported lazily, on the first real model request. Nothing
  * here runs, loads or connects in AI_MODE=simulated.
  */
@@ -101,6 +113,29 @@ const DECLARATIONS = [
   ...Object.entries(READ_TOOLS).map(([name, t]) => ({ name, description: t.description, parameters: t.parameters })),
   SUGGEST,
 ];
+
+/** Hard cap: reasoning + one narration. Never more, for any message. */
+export const MAX_CALLS_PER_MESSAGE = 2;
+
+/**
+ * Generation settings, from the installed @google/genai types:
+ *   thinkingConfig.thinkingBudget - "0 is DISABLED"; allowed on Flash models.
+ *   httpOptions.retryOptions.attempts - "If 0 or 1, it means no retries. If not
+ *   specified, default to 5."
+ *   httpOptions.timeout - milliseconds.
+ * Non-Flash models keep their default thinking and get a larger output limit.
+ */
+export function generationSettings(model, timeoutMs) {
+  const flash = /flash/i.test(String(model ?? ""));
+  return {
+    temperature: 0.3,
+    maxOutputTokens: flash ? 400 : 1024,
+    ...(flash ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+    httpOptions: { timeout: timeoutMs, retryOptions: { attempts: 1 } },
+  };
+}
+
+class BudgetError extends Error {}
 
 /** Tools whose results are narrated deterministically - they changed something. */
 const WRITE_RESULTS = new Set(["resetDevice", "escalate", "applyInventoryTag", "adoptAsset"]);
@@ -260,8 +295,10 @@ export class VertexConfigError extends Error {}
  * { text, functionCalls }. Tests pass a mock; the default makes the real call.
  */
 export function createVertexDriver({ config = {}, generate = null, log = console } = {}) {
-  const stats = { modelRequests: 0, liveRequests: 0, sdkLoads: 0, fallbacks: 0, rejectedTools: [] };
+  const stats = { modelRequests: 0, liveRequests: 0, sdkLoads: 0, fallbacks: 0, rejectedTools: [], messages: 0 };
   let client = null;
+  const model = config.model ?? "gemini-2.5-flash";
+  const timeoutMs = config.timeoutMs ?? 15000;
 
   async function liveGenerate(request) {
     if (!config.project) throw new VertexConfigError("AI_MODE=vertex but GCP_PROJECT is not set");
@@ -269,47 +306,90 @@ export function createVertexDriver({ config = {}, generate = null, log = console
     stats.sdkLoads += 1;
     // Same initialisation as the ITServiceDesk-ENG service: Vertex AI through
     // Application Default Credentials. No key file.
-    client ??= new GoogleGenAI({ vertexai: true, project: config.project, location: config.location ?? "us-central1" });
+    client ??= new GoogleGenAI({
+      vertexai: true,
+      project: config.project,
+      location: config.location ?? "us-central1",
+      // Client-wide as well as per request: never let the SDK retry on its own.
+      httpOptions: { timeout: timeoutMs, retryOptions: { attempts: 1 } },
+    });
     stats.liveRequests += 1;
     const r = await client.models.generateContent(request);
-    return { text: r.text, functionCalls: r.functionCalls ?? [] };
+    return { text: r.text, functionCalls: r.functionCalls ?? [], usage: r.usageMetadata ?? null };
   }
   const call = generate ?? liveGenerate;
 
+  /**
+   * One model call, charged to the current chat message. Refuses when there is
+   * no chat message (a greeting or a button tap) or the budget is spent, so a
+   * third call is impossible. Makes exactly one attempt: no retry, no
+   * regeneration after a timeout.
+   */
   async function ask(session, contents, withTools, guidance = "") {
+    const turn = session.vertexTurn;
+    if (!turn) throw new BudgetError("no chat message in progress");
+    if (turn.calls >= MAX_CALLS_PER_MESSAGE) throw new BudgetError(`budget of ${MAX_CALLS_PER_MESSAGE} calls reached`);
+    turn.calls += 1;
     stats.modelRequests += 1;
+
+    const controller = new AbortController();
     const request = {
-      model: config.model ?? "gemini-2.5-flash",
+      model,
       contents,
       config: {
         systemInstruction: systemPrompt(contextOf(session), guidance),
-        temperature: 0.3,
-        maxOutputTokens: 400,
+        ...generationSettings(model, timeoutMs),
+        abortSignal: controller.signal,
         ...(withTools ? { tools: [{ functionDeclarations: DECLARATIONS }], toolConfig: { functionCallingConfig: { mode: "AUTO" } } } : {}),
       },
     };
-    const timeoutMs = config.timeoutMs ?? 15000;
+    const started = Date.now();
     let timer;
     try {
-      return await Promise.race([
+      const res = await Promise.race([
         Promise.resolve().then(() => call(request)),
         new Promise((_, reject) => {
-          timer = setTimeout(() => reject(new Error(`model timed out after ${timeoutMs} ms`)), timeoutMs);
+          timer = setTimeout(() => {
+            controller.abort();
+            reject(new Error(`timeout after ${timeoutMs} ms`));
+          }, timeoutMs);
         }),
       ]);
+      return { ...res, ms: Date.now() - started, call: turn.calls };
+    } catch (error) {
+      error.ms = Date.now() - started;
+      error.call = turn.calls;
+      throw error;
     } finally {
       clearTimeout(timer);
     }
   }
 
-  function fallback(turn, error) {
+  /**
+   * One line per model call: model, call number, latency, tool, token counts,
+   * fallback. Never the member's text, the reply, credentials, auth tokens or
+   * request headers.
+   */
+  function usageLog(turn, { call, ms, tool = null, usage = null, fallback = false, reason = null, kind }) {
+    const tokens = usage
+      ? ` tokens in=${usage.promptTokenCount ?? "?"} out=${usage.candidatesTokenCount ?? "?"} thinking=${usage.thoughtsTokenCount ?? 0}`
+      : "";
+    const line = `[vertex] message#${turn?.id ?? "-"} call ${call ?? "-"}/${MAX_CALLS_PER_MESSAGE} ${kind} model=${model} ${ms ?? "-"}ms tool=${tool ?? "none"}${tokens} fallback=${fallback ? `yes (${reason})` : "no"}`;
+    (fallback ? log.warn : log.info)?.call(log, line);
+  }
+
+  function fallback(turnOut, error, kind, turn = null) {
     stats.fallbacks += 1;
     // The reason only - never the member's message or model output.
-    log.warn?.(`[agent] Vertex turn failed (${error?.message ?? error}); answered by the simulator instead`);
-    return { ...turn, _agent: { fallback: true } };
+    usageLog(turn, { call: error?.call, ms: error?.ms, fallback: true, reason: error?.message ?? String(error), kind });
+    return { ...turnOut, _agent: { fallback: true } };
   }
 
   async function plan({ session, text }) {
+    // A new chat message opens a new budget of MAX_CALLS_PER_MESSAGE calls.
+    stats.messages += 1;
+    session.vertexTurn = { id: stats.messages, calls: 0 };
+
     // Only the knowledge-base entries relevant to this message go in the prompt.
     const topic = session.intent ?? simulator.classify(text);
     const guidance = formatGuidance(retrieveGuidance({ text, intent: topic }));
@@ -317,7 +397,12 @@ export function createVertexDriver({ config = {}, generate = null, log = console
     try {
       res = await ask(session, historyContents(session), true, guidance);
     } catch (e) {
-      return fallback(simulator.plan({ session, text }), e);
+      e.call ??= session.vertexTurn.calls;
+      const turn = session.vertexTurn;
+      // After a failure the whole message stays on the simulator: close the
+      // budget so its narration cannot make a second, repeated attempt.
+      session.vertexTurn = null;
+      return fallback(simulator.plan({ session, text }), e, "reasoning", turn);
     }
 
     let toolCall = null;
@@ -366,19 +451,33 @@ export function createVertexDriver({ config = {}, generate = null, log = console
       message = labels.length ? `Tap ${labels.join(" or ")} below to confirm and I'll go ahead.` : message;
     }
 
-    if (!message && !tool) return fallback(simulator.plan({ session, text }), new Error("empty model reply"));
+    if (!message && !tool) {
+      const empty = Object.assign(new Error("empty model reply"), { call: res.call, ms: res.ms });
+      const turn = session.vertexTurn;
+      session.vertexTurn = null;
+      return fallback(simulator.plan({ session, text }), empty, "reasoning", turn);
+    }
 
+    usageLog(session.vertexTurn, { call: res.call, ms: res.ms, tool: tool?.name, usage: res.usage, kind: "reasoning" });
     return { intent, message, ...(tool ? { tool } : {}), actions, _agent: { fallback: false } };
   }
 
-  /** A member's button tap: deterministic and confirmation-gated, as in simulated mode. */
+  /**
+   * A member's button tap: deterministic and confirmation-gated, as in
+   * simulated mode. It closes any chat-message budget, so the tap - including
+   * a read such as "Run connectivity diagnostic" - costs no model call.
+   */
   function planAction(args) {
+    if (args?.session) args.session.vertexTurn = null;
     return simulator.planAction(args);
   }
 
   async function narrate(toolName, result, session) {
     const facts = simulator.narrate(toolName, result, session);
     if (WRITE_RESULTS.has(toolName) || !READ_TOOLS[toolName]) return facts;
+    // Taps and greetings have no chat-message budget: deterministic wording.
+    const turn = session.vertexTurn;
+    if (!turn || turn.calls >= MAX_CALLS_PER_MESSAGE) return facts;
     const lastUser = [...(session.history ?? [])].reverse().find((h) => h.role === "user")?.text ?? "";
     const guidance = formatGuidance(retrieveGuidance({ text: lastUser, intent: READ_TOOLS[toolName].intent }));
     try {
@@ -393,9 +492,10 @@ export function createVertexDriver({ config = {}, generate = null, log = console
         guidance,
       );
       const message = cleanText(res?.text);
-      return { ...facts, message: message || facts.message };
+      usageLog(turn, { call: res.call, ms: res.ms, tool: toolName, usage: res.usage, kind: "narration", fallback: !message, reason: message ? null : "empty model reply" });
+      return { ...facts, message: message || facts.message, ...(message ? {} : { _agent: { fallback: true } }) };
     } catch (e) {
-      fallback({}, e);
+      fallback({}, e, "narration", turn);
       return { ...facts, _agent: { fallback: true } };
     }
   }
