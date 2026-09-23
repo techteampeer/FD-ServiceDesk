@@ -127,6 +127,8 @@ export const MAX_CALLS_PER_MESSAGE = 2;
  *     specified, default to 5."
  *   httpOptions.timeout - milliseconds.
  * Flash models keep the 400-token output limit; other models get 1024.
+ * Temperature: Gemini 3.x runs at its documented default (1.0), so none is
+ * sent; earlier models keep 0.3.
  * The level is passed as its string value so the SDK is not loaded here.
  */
 export function generationSettings(model, timeoutMs) {
@@ -135,7 +137,7 @@ export function generationSettings(model, timeoutMs) {
   const major = Number((name.match(/^gemini-(\d+)/) ?? [])[1] ?? 0);
   const thinkingConfig = major >= 3 ? { thinkingLevel: flash ? "MINIMAL" : "LOW" } : flash ? { thinkingBudget: 0 } : null;
   return {
-    temperature: 0.3,
+    ...(major >= 3 ? {} : { temperature: 0.3 }),
     maxOutputTokens: flash ? 400 : 1024,
     ...(thinkingConfig ? { thinkingConfig } : {}),
     httpOptions: { timeout: timeoutMs, retryOptions: { attempts: 1 } },
