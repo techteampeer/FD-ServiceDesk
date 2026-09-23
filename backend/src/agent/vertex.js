@@ -209,6 +209,10 @@ FACTS - NEVER INVENT
 
 TOOLS
 - lookupDevice, connectivityDiagnostic and validateAssetTag read information. They always act on the member's currently selected device; you cannot choose a different device or member.
+- If you say you are checking, running or looking up something that one of these read tools covers, call that tool in this same reply. Never say "I'll run...", "I'll check..." or "Let me look up..." and then not do it.
+- For signal, data, FirstNet, Verizon, SIM or eSIM problems on the selected device, run connectivityDiagnostic rather than only describing it.
+- If you do not run a tool, tell the member what they can do instead and offer it with suggest_actions (for example "diagnose").
+- Never state a diagnostic result - healthy, degraded, no signal on the line - unless connectivityDiagnostic returned it in this conversation.
 - suggest_actions offers buttons. A device reset ("reset-device") and a service ticket ("escalate") are ONLY ever offered as buttons - the member confirms by tapping. Never say a reset ran or a ticket was created unless a tool result in this conversation says so.
 - There is no sound ping or sound trigger. Do not offer one.
 
@@ -264,6 +268,60 @@ function cleanText(text) {
     .replace(SIGN_OFF, "")
     .trim()
     .slice(0, 800);
+}
+
+/*
+ * Promise guard. The model must not tell the member it is running a check that
+ * it did not request, and must not state a diagnostic result before the
+ * diagnostic has run. The prompt asks for this; the code below enforces it.
+ */
+const CONNECTIVITY_WORDS = /\b(cellular|signal|connectivity|connection|network|data|firstnet|verizon|e?sim|bars)\b/i;
+// A first-person commitment to check something now ("I'll run a diagnostic",
+// "Let me check the connection", "I'm checking...").
+const PROMISE_CHECK =
+  /\b(?:i['’]?m|i am)\s+(?:now\s+)?(?:running|checking|testing|looking|scanning|troubleshooting)\b|\b(?:i['’]?ll|i will|let me(?! know)|i['’]?m going to|i am going to)\b[^.?!]*?\b(?:run|check|test|diagnos\w*|look|scan|troubleshoot\w*|investigat\w*)\b/i;
+// Any mention of the connectivity check, promised or merely suggested.
+const SUGGESTS_CHECK =
+  /\b(diagnos\w*|connectivity check|connection check|check (?:the |your )?(?:connection|line|signal|network|service|connectivity)|test (?:the |your )?(?:connection|line))\b/i;
+// A stated diagnostic outcome ("the line looks healthy", "the diagnostic shows...").
+const RESULT_CLAIM =
+  /\b(?:line|diagnostic|connection|carrier|sim|esim)\b[^.?!]{0,40}\b(?:looks|appears|seems|shows|showed|came back|reports?|reported|is (?:currently )?(?:healthy|degraded|down|failing|suspended|fine|normal|working))\b/i;
+const DIAGNOSED_STAGES = new Set(["diagnosed", "reset-ok", "reset-failed", "still-broken"]);
+
+const sentences = (text) => String(text ?? "").split(/(?<=[.!?])\s+/).filter((x) => x.trim());
+
+// A statement, not a question or a condition ("If the line shows no bars...").
+const isResultClaim = (x) => RESULT_CLAIM.test(x) && !x.trim().endsWith("?") && !/^\s*(if|when|once|whether|unless)\b/i.test(x);
+
+/** Drops sentences that state a diagnostic outcome the tools have not produced. */
+function withoutResultClaims(text) {
+  return sentences(text).filter((x) => !isResultClaim(x)).join(" ");
+}
+
+/** True when a diagnostic already ran on this device in this conversation. */
+function alreadyDiagnosed(session) {
+  const d = session.device;
+  return Boolean(d && session.slots?.stageDevice === `${d.itemType}:${d.id}` && DIAGNOSED_STAGES.has(session.slots?.stage));
+}
+
+const OTHER_TOPICS = new Set(["lost", "inventory"]);
+function isConnectivityTurn(session, text, reply) {
+  const topic = simulator.classify(text);
+  if (topic === "connectivity" || session.intent === "connectivity") return true;
+  if (OTHER_TOPICS.has(topic) || OTHER_TOPICS.has(session.intent)) return false;
+  return CONNECTIVITY_WORDS.test(reply);
+}
+
+/** Replaces a promised check with an honest offer of the real button. */
+function offerInsteadOfPromise(text, device) {
+  const kept = sentences(text).filter((x) => !PROMISE_CHECK.test(x));
+  if (kept.some((x) => /Run connectivity diagnostic/.test(x))) return kept.join(" ");
+  const offer = device
+    ? `I can run a connectivity diagnostic on ${device.name ?? "your device"} - tap "Run connectivity diagnostic" below to start it.`
+    : "Select one of your assigned devices on the left first, and I can run a connectivity diagnostic on it.";
+  const questions = kept.filter((x) => x.trim().endsWith("?"));
+  const rest = kept.filter((x) => !x.trim().endsWith("?"));
+  return [...rest, offer, ...questions].join(" ");
 }
 
 function deviceArgs(d) {
@@ -419,11 +477,11 @@ export function createVertexDriver({ config = {}, generate = null, log = console
    * fallback. Never the member's text, the reply, credentials, auth tokens or
    * request headers.
    */
-  function usageLog(turn, { call, ms, tool = null, usage = null, fallback = false, reason = null, kind }) {
+  function usageLog(turn, { call, ms, tool = null, usage = null, fallback = false, reason = null, kind, guard = null }) {
     const tokens = usage
       ? ` tokens in=${usage.promptTokenCount ?? "?"} out=${usage.candidatesTokenCount ?? "?"} thinking=${usage.thoughtsTokenCount ?? 0}`
       : "";
-    const line = `[vertex] message#${turn?.id ?? "-"} call ${call ?? "-"}/${MAX_CALLS_PER_MESSAGE} ${kind} model=${model} ${ms ?? "-"}ms tool=${tool ?? "none"}${tokens} fallback=${fallback ? `yes (${reason})` : "no"}`;
+    const line = `[vertex] message#${turn?.id ?? "-"} call ${call ?? "-"}/${MAX_CALLS_PER_MESSAGE} ${kind} model=${model} ${ms ?? "-"}ms tool=${tool ?? "none"}${tokens} fallback=${fallback ? `yes (${reason})` : "no"}${guard ? ` guard=${guard}` : ""}`;
     (fallback ? log.warn : log.info)?.call(log, line);
   }
 
@@ -493,6 +551,25 @@ export function createVertexDriver({ config = {}, generate = null, log = console
     // Kept for the narration call, which must return this exact model turn.
     if (tool) session.vertexTurn.replay = { content: res.content ?? null, calls: res.functionCalls ?? [] };
 
+    // Promise guard (deterministic, no model call). Before the diagnostic runs
+    // its result is unknown, so no outcome may be stated; and a check the model
+    // promised but did not request becomes an honest offer of the real button.
+    let guard = null;
+    if (tool?.name === "connectivityDiagnostic") {
+      message = withoutResultClaims(message);
+    } else if (!tool && isConnectivityTurn(session, text, message)) {
+      const said = message;
+      if (!alreadyDiagnosed(session)) message = withoutResultClaims(message);
+      const claimRemoved = message !== said;
+      const promised = PROMISE_CHECK.test(message);
+      if (promised || claimRemoved) message = offerInsteadOfPromise(message, session.device);
+      if (promised || claimRemoved || SUGGESTS_CHECK.test(said)) {
+        offerIds.unshift("diagnose");
+        intent = "connectivity";
+        guard = promised ? "promised-check" : claimRemoved ? "unverified-result" : "suggested-check";
+      }
+    }
+
     const actions = offersFrom(offerIds, session, intent);
 
     // The model tried to act directly. Whatever it said ("opening a ticket...")
@@ -510,7 +587,7 @@ export function createVertexDriver({ config = {}, generate = null, log = console
       return fallback(simulator.plan({ session, text }), empty, "reasoning", turn);
     }
 
-    usageLog(session.vertexTurn, { call: res.call, ms: res.ms, tool: tool?.name, usage: res.usage, kind: "reasoning" });
+    usageLog(session.vertexTurn, { call: res.call, ms: res.ms, tool: tool?.name, usage: res.usage, kind: "reasoning", guard });
     return { intent, message, ...(tool ? { tool } : {}), actions, _agent: { fallback: false } };
   }
 
