@@ -34,5 +34,5 @@ jobs:
             --region ${{ env.REGION }} \
             --project ${{ env.PROJECT_ID }} \
             --allow-unauthenticated \
-            --set-env-vars GLPI_BASE_URL="https://glpi.peer-consulting.com/apirest.php",GLPI_ENTITY_ID="1" \
+            --set-env-vars GLPI_BASE_URL="https://glpi.peer-consulting.com/apirest.php",GLPI_ENTITY_ID="1",GOOGLE_CLOUD_PROJECT="itservicedesk-502618",VERTEX_LOCATION="us-central1",VERTEX_MODEL="gemini-1.5-flash" \
             --set-secrets GLPI_APP_TOKEN=GLPI_APP_TOKEN:latest,GLPI_USER_TOKEN=GLPI_USER_TOKEN:latest

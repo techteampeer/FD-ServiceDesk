@@ -297,11 +297,15 @@ export class VertexConfigError extends Error {}
 export function createVertexDriver({ config = {}, generate = null, log = console } = {}) {
   const stats = { modelRequests: 0, liveRequests: 0, sdkLoads: 0, fallbacks: 0, rejectedTools: [], messages: 0 };
   let client = null;
-  const model = config.model ?? "gemini-2.5-flash";
+  // No default: the model is whatever VERTEX_MODEL names, never a silent choice.
+  const model = config.model ?? null;
   const timeoutMs = config.timeoutMs ?? 15000;
 
   async function liveGenerate(request) {
-    if (!config.project) throw new VertexConfigError("AI_MODE=vertex but GCP_PROJECT is not set");
+    // Every check happens before the SDK is even loaded.
+    if (!config.project) throw new VertexConfigError("AI_MODE=vertex but GOOGLE_CLOUD_PROJECT is not set");
+    if (!config.model) throw new VertexConfigError("AI_MODE=vertex but VERTEX_MODEL is not set");
+    if (config.retired) throw new VertexConfigError(config.retired);
     const { GoogleGenAI } = await import("@google/genai");
     stats.sdkLoads += 1;
     // Same initialisation as the ITServiceDesk-ENG service: Vertex AI through
