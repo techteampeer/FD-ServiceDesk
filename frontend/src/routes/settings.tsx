@@ -24,13 +24,13 @@ import { useSessionUser } from "@/lib/session";
 export const Route = createFileRoute("/settings")({
   head: () => ({
     meta: [
-      { title: "Preferences — FDNY IT Service Portal" },
+      { title: "Preferences — Fire Department IT Service Portal" },
       {
         name: "description",
         content:
           "Notification channels, default unit, accessibility options, and session controls for the portal.",
       },
-      { property: "og:title", content: "Preferences — FDNY IT Service Portal" },
+      { property: "og:title", content: "Preferences — Fire Department IT Service Portal" },
       {
         property: "og:description",
         content: "Control how the portal notifies you and what it shows by default.",

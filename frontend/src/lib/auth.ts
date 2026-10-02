@@ -33,7 +33,7 @@ export async function signIn(
   try {
     const { user, auth } = await loginUser(identifier.trim(), password);
     if (!user?.id) {
-      return { ok: false, error: "That ID was not found in the FDNY directory." };
+      return { ok: false, error: "That ID was not found in the Fire Department directory." };
     }
     if (typeof window !== "undefined") {
       const session: Session = { identifier: identifier.trim(), at: Date.now(), user };

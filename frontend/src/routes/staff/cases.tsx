@@ -34,13 +34,13 @@ import { originOf, ticketToServiceCase } from "@/lib/glpi-adapters";
 export const Route = createFileRoute("/staff/cases")({
   head: () => ({
     meta: [
-      { title: "Case Queue — FDNY Service Desk" },
+      { title: "Case Queue — Fire Department Service Desk" },
       {
         name: "description",
         content:
           "The full service-desk case queue with filters for status, priority, category, and assignee.",
       },
-      { property: "og:title", content: "Case Queue — FDNY Service Desk" },
+      { property: "og:title", content: "Case Queue — Fire Department Service Desk" },
       {
         property: "og:description",
         content: "Work the queue: filter, sort, and open any case in the concept service desk.",

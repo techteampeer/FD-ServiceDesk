@@ -23,13 +23,13 @@ import { faqs, supportChannels } from "@/lib/portal-data";
 export const Route = createFileRoute("/help")({
   head: () => ({
     meta: [
-      { title: "Help & Support — FDNY IT Service Portal" },
+      { title: "Help & Support — Fire Department IT Service Portal" },
       {
         name: "description",
         content:
           "Contact the IT service desk, read answers to common questions, and find the right channel for urgent in-service technology problems.",
       },
-      { property: "og:title", content: "Help & Support — FDNY IT Service Portal" },
+      { property: "og:title", content: "Help & Support — Fire Department IT Service Portal" },
       {
         property: "og:description",
         content: "Service desk contacts, FAQs, and a message form for non-urgent questions.",

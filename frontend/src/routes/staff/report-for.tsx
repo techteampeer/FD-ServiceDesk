@@ -33,7 +33,7 @@ import {
 export const Route = createFileRoute("/staff/report-for")({
   head: () => ({
     meta: [
-      { title: "Report for a Member — FDNY Service Desk" },
+      { title: "Report for a Member — Fire Department Service Desk" },
       {
         name: "description",
         content:
@@ -119,7 +119,7 @@ function ReportForPage() {
     try {
       const found = await searchUsers(q);
       setMatches(found);
-      if (!found.length) setSearchError("No GLPI user in the FDNY entity matches that.");
+      if (!found.length) setSearchError("No GLPI user in the Fire Department entity matches that.");
     } catch (e) {
       setSearchError(e instanceof Error ? e.message : "The search failed.");
       setMatches(null);
@@ -244,7 +244,7 @@ function ReportForPage() {
                         runSearch();
                       }
                     }}
-                    placeholder="e.g. 900103, tlindqvist, or an @fdny address"
+                    placeholder="e.g. 900103, tlindqvist, or an email address"
                     aria-label="Search GLPI users"
                   />
                 </div>

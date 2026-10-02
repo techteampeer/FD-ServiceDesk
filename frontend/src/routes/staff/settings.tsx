@@ -32,13 +32,13 @@ import { automationPanels, staffUser } from "@/lib/mock-data";
 export const Route = createFileRoute("/staff/settings")({
   head: () => ({
     meta: [
-      { title: "Service Desk Settings — FDNY Portal" },
+      { title: "Service Desk Settings — Fire Department Portal" },
       {
         name: "description",
         content:
           "Queue defaults, alert thresholds, automation controls, and integration status for the concept service desk.",
       },
-      { property: "og:title", content: "Service Desk Settings — FDNY Portal" },
+      { property: "og:title", content: "Service Desk Settings — Fire Department Portal" },
       {
         property: "og:description",
         content: "Configure queue defaults, alerting, and the service automations.",

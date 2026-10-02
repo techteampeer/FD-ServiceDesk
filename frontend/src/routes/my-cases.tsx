@@ -21,13 +21,13 @@ import { useTicketVersion } from "@/lib/ticket-events";
 export const Route = createFileRoute("/my-cases")({
   head: () => ({
     meta: [
-      { title: "My Cases — FDNY IT Service Portal" },
+      { title: "My Cases — Fire Department IT Service Portal" },
       {
         name: "description",
         content:
           "Track the status, priority, and latest updates on every IT service request submitted by your unit.",
       },
-      { property: "og:title", content: "My Cases — FDNY IT Service Portal" },
+      { property: "og:title", content: "My Cases — Fire Department IT Service Portal" },
       {
         property: "og:description",
         content: "Status and history for the service requests your unit has submitted.",

@@ -91,7 +91,7 @@ export function ticketToServiceCase(t: GlpiTicket): ServiceCase {
     id: t.reference ?? `GLPI-${t.id}`,
     issue: t.name,
     requester: t.requester?.name ?? "Unknown requester",
-    requesterTitle: t.requester?.login ? `Login ${t.requester.login}` : "FDNY member",
+    requesterTitle: t.requester?.login ? `Login ${t.requester.login}` : "Fire Department member",
     requesterContact: (t.requester as { employeeId?: string | null })?.employeeId
       ? `Employee ID ${(t.requester as { employeeId?: string | null }).employeeId}`
       : "—",

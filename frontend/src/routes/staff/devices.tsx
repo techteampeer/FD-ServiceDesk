@@ -35,13 +35,13 @@ import { toDeviceRow, useLiveLocation, type DeviceRow } from "@/lib/use-live-dev
 export const Route = createFileRoute("/staff/devices")({
   head: () => ({
     meta: [
-      { title: "Field Devices — FDNY Service Desk" },
+      { title: "Field Devices — Fire Department Service Desk" },
       {
         name: "description",
         content:
           "Enrolled field device fleet: health, carrier, battery, last check-in, assigned station and simulated remote actions.",
       },
-      { property: "og:title", content: "Field Devices — FDNY Service Desk" },
+      { property: "og:title", content: "Field Devices — Fire Department Service Desk" },
       {
         property: "og:description",
         content: "Monitor the enrolled tablet, MDT, and station device fleet.",
@@ -163,7 +163,7 @@ function StaffDevicesPage() {
             <Smartphone className="size-7 text-primary" /> Field Devices
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            FDNY equipment in the GLPI asset catalog, with the simulated remote actions the service desk can run
+            Fire Department equipment in the GLPI asset catalog, with the simulated remote actions the service desk can run
             without dispatching a technician.
           </p>
         </header>

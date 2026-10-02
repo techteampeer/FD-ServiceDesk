@@ -46,13 +46,13 @@ import { memberNav } from "@/lib/nav";
 export const Route = createFileRoute("/report-ticket")({
   head: () => ({
     meta: [
-      { title: "AI Service Assistant — FDNY IT Service Portal" },
+      { title: "AI Service Assistant — Fire Department IT Service Portal" },
       {
         name: "description",
         content:
           "Chat with a simulated IT service assistant to troubleshoot field tablets, cellular connectivity, and equipment tags, then create a service ticket.",
       },
-      { property: "og:title", content: "AI Service Assistant — FDNY IT Service Portal" },
+      { property: "og:title", content: "AI Service Assistant — Fire Department IT Service Portal" },
       {
         property: "og:description",
         content: "Simulated AI troubleshooting and ticket creation for field technology issues.",
@@ -86,7 +86,7 @@ const greeting: ChatMessage = {
   id: "greet",
   role: "ai",
   at: "07:40",
-  text: "Hi! I'm the FDNY IT Service Assistant. Tell me what technology issue you're experiencing. I can help troubleshoot your device, connectivity, or equipment issue and create a service ticket when needed.",
+  text: "Hi! I'm the Fire Department IT Service Assistant. Tell me what technology issue you're experiencing. I can help troubleshoot your device, connectivity, or equipment issue and create a service ticket when needed.",
 };
 
 const prompts = [
@@ -618,7 +618,7 @@ function ReportTicketPage() {
           ) : (
             <>
               <header className="border-b px-5 py-4">
-                <h1 className="font-display text-lg font-bold">FDNY IT Service Assistant</h1>
+                <h1 className="font-display text-lg font-bold">Fire Department IT Service Assistant</h1>
                 <p className="text-sm text-muted-foreground">
                   Describe your technology issue and I'll help diagnose the problem or create a
                   service ticket.
@@ -858,7 +858,7 @@ function SummaryScreen({
                 </>
               ) : (
                 <span className="text-muted-foreground">
-                  Not signed in — sign in so the ticket carries your FDNY record.
+                  Not signed in — sign in so the ticket carries your Fire Department record.
                 </span>
               )}
             </dd>

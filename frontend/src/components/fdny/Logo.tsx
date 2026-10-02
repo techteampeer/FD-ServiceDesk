@@ -29,7 +29,7 @@ export function Logo({
             tone === "light" ? "text-white" : "text-foreground",
           )}
         >
-          FDNY
+          FD
         </span>
         <span
           className={cn(

@@ -16,13 +16,13 @@ import { kbArticles, type KbArticle, type ServiceCategory } from "@/lib/portal-d
 export const Route = createFileRoute("/knowledge-base")({
   head: () => ({
     meta: [
-      { title: "Knowledge Base — FDNY IT Service Portal" },
+      { title: "Knowledge Base — Fire Department IT Service Portal" },
       {
         name: "description",
         content:
           "Step-by-step guides for field tablets, FirstNet and Verizon connectivity, ePCR application issues, equipment tags, and account access.",
       },
-      { property: "og:title", content: "Knowledge Base — FDNY IT Service Portal" },
+      { property: "og:title", content: "Knowledge Base — Fire Department IT Service Portal" },
       {
         property: "og:description",
         content: "Self-service guides for the technology crews depend on.",

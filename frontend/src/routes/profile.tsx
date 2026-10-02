@@ -16,13 +16,13 @@ import { activityLog, fieldDevices, myCaseIds, userProfile } from "@/lib/portal-
 export const Route = createFileRoute("/profile")({
   head: () => ({
     meta: [
-      { title: "My Profile — FDNY IT Service Portal" },
+      { title: "My Profile — Fire Department IT Service Portal" },
       {
         name: "description",
         content:
           "Member details, assigned field devices, recent portal activity, and open cases for the signed-in user.",
       },
-      { property: "og:title", content: "My Profile — FDNY IT Service Portal" },
+      { property: "og:title", content: "My Profile — Fire Department IT Service Portal" },
       {
         property: "og:description",
         content: "Member record, assigned devices, and recent portal activity.",

@@ -10,13 +10,13 @@ import { useRequireSession } from "@/lib/session";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "FDNY IT Service & Support Portal" },
+      { title: "Fire Department IT Service & Support Portal" },
       {
         name: "description",
         content:
           "Concept service portal for fire-service field technology: report IT issues, track cases, and explore device recovery, eSIM refresh, and inventory validation automation.",
       },
-      { property: "og:title", content: "FDNY IT Service & Support Portal" },
+      { property: "og:title", content: "Fire Department IT Service & Support Portal" },
       {
         property: "og:description",
         content:
@@ -95,17 +95,17 @@ function LandingPage() {
           <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28">
             <div className="mx-auto flex max-w-4xl flex-col items-center text-center animate-rise">
               <h1 className="mt-8 font-display text-7xl leading-[0.9] font-extrabold tracking-tight sm:text-9xl lg:text-[11rem]">
-                FDNY
+                FD
               </h1>
               <p className="mt-4 text-xl font-semibold text-navy-foreground/85 sm:text-2xl">
-                Fire Department of the City of New York
+                Fire Department
               </p>
               <p className="mt-6 font-display text-4xl font-bold text-primary-foreground sm:text-5xl">
                 IT Service &amp; Support Portal
               </p>
               <p className="mt-5 max-w-2xl text-balance-tight text-base text-navy-foreground/75 sm:text-lg">
                 Quickly report technology issues, manage field equipment, and get assistance from
-                the FDNY IT Service Desk.
+                the Fire Department IT Service Desk.
               </p>
               <div className="mt-10 flex flex-wrap justify-center gap-3">
                 <Button asChild size="lg">
@@ -134,7 +134,7 @@ function LandingPage() {
         {/* Automation cases */}
         <section className="border-y bg-secondary/60">
           <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
-            <h2 className="font-display text-3xl font-extrabold">FDNY Service Automation Cases</h2>
+            <h2 className="font-display text-3xl font-extrabold">Fire Department Service Automation Cases</h2>
             <p className="mt-2 max-w-2xl text-muted-foreground">
               Three service-desk workflows being implemented to cut dispatches and keep field
               technology online.

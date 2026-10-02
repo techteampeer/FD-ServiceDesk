@@ -13,13 +13,13 @@ import { signIn } from "@/lib/auth";
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "Sign In — FDNY IT Service Portal" },
+      { title: "Sign In — Fire Department IT Service Portal" },
       {
         name: "description",
         content:
-          "Sign in to the FDNY IT service portal for field technology and service-desk workflows.",
+          "Sign in to the Fire Department IT service portal for field technology and service-desk workflows.",
       },
-      { property: "og:title", content: "Sign In — FDNY IT Service Portal" },
+      { property: "og:title", content: "Sign In — Fire Department IT Service Portal" },
       {
         property: "og:description",
         content: "Concept authentication screen for a fire-service IT support portal.",
@@ -67,7 +67,7 @@ function LoginPage() {
     const staff = res.user?.role === "staff";
     if (mode === "staff" && !staff) {
       setFormError(
-        "That account does not have service-desk access. Use the FDNY end users tab, or sign in with a service-desk account.",
+        "That account does not have service-desk access. Use the FD end users tab, or sign in with a service-desk account.",
       );
       return;
     }
@@ -96,10 +96,10 @@ function LoginPage() {
         </div>
         <div className="relative max-w-lg">
           <p className="font-display text-[7rem] leading-none font-extrabold tracking-tight">
-            FDNY
+            FD
           </p>
           <p className="mt-2 text-xl font-semibold text-navy-foreground/90">
-            Fire Department of the City of New York
+            Fire Department
           </p>
           <p className="mt-6 text-base text-navy-foreground/70">
             Technology &amp; Field Services Portal
@@ -118,8 +118,8 @@ function LoginPage() {
           </div>
         </div>
         <p className="relative text-xs text-navy-foreground/50">
-          Not an official FDNY system and not affiliated with or
-          authorized by the City of New York.
+          Not an official Fire Department system and not affiliated with or
+          authorized by any government agency.
         </p>
       </section>
 
@@ -141,7 +141,7 @@ function LoginPage() {
             >
               {(
                 [
-                  { id: "member", label: "FDNY end users" },
+                  { id: "member", label: "FD end users" },
                   { id: "staff", label: "Service desk" },
                 ] as const
               ).map((t) => (

@@ -15,16 +15,16 @@ import { serviceCatalog, type ServiceCategory } from "@/lib/portal-data";
 export const Route = createFileRoute("/services")({
   head: () => ({
     meta: [
-      { title: "Service Catalog — FDNY IT Service Portal" },
+      { title: "Service Catalog — Fire Department IT Service Portal" },
       {
         name: "description",
         content:
           "Browse the IT services available to field personnel: device recovery, carrier eSIM refresh, application support, access requests, and inventory validation.",
       },
-      { property: "og:title", content: "Service Catalog — FDNY IT Service Portal" },
+      { property: "og:title", content: "Service Catalog — Fire Department IT Service Portal" },
       {
         property: "og:description",
-        content: "Every IT service available to FDNY field personnel, with response targets.",
+        content: "Every IT service available to Fire Department field personnel, with response targets.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

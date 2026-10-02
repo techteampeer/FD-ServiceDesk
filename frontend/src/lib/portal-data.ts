@@ -645,7 +645,7 @@ export const supportChannels = [
   },
   {
     name: "Email",
-    detail: "servicedesk@fdny.org",
+    detail: "servicedesk@firedept.example",
     note: "Non-urgent requests · 4-hour response",
   },
   {
@@ -655,7 +655,7 @@ export const supportChannels = [
   },
   {
     name: "Carrier Liaison",
-    detail: "carrier-liaison@fdny.org",
+    detail: "carrier-liaison@firedept.example",
     note: "FirstNet and Verizon escalations",
   },
 ];
@@ -676,18 +676,18 @@ export const userProfile = {
 };
 
 export const activityLog = [
-  { at: "Sep 18, 2026 · 07:42", label: "Opened case FDNY-IT-10482 via AI Service Assistant" },
+  { at: "Sep 18, 2026 · 07:42", label: "Opened case FD-IT-10482 via AI Service Assistant" },
   { at: "Sep 18, 2026 · 07:41", label: "Signed in from station kiosk — Engine 23" },
   { at: "Sep 17, 2026 · 18:22", label: "Confirmed equipment tag correction RSC-1-THRM-114" },
-  { at: "Sep 16, 2026 · 21:20", label: "Case FDNY-IT-10462 resolved — device recovered" },
+  { at: "Sep 16, 2026 · 21:20", label: "Case FD-IT-10462 resolved — device recovered" },
   { at: "Sep 15, 2026 · 08:03", label: "Completed quarterly inventory attestation" },
 ];
 
 /* Cases belonging to the signed-in member's unit. */
 export const myCaseIds = [
-  "FDNY-IT-10482",
-  "FDNY-IT-10475",
-  "FDNY-IT-10462",
-  "FDNY-IT-10471",
-  "FDNY-IT-10437",
+  "FD-IT-10482",
+  "FD-IT-10475",
+  "FD-IT-10462",
+  "FD-IT-10471",
+  "FD-IT-10437",
 ];

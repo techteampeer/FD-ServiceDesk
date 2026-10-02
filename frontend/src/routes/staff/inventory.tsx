@@ -32,13 +32,13 @@ import { getFleet, type GlpiDevice } from "@/lib/api";
 export const Route = createFileRoute("/staff/inventory")({
   head: () => ({
     meta: [
-      { title: "Inventory Validation — FDNY Service Desk" },
+      { title: "Inventory Validation — Fire Department Service Desk" },
       {
         name: "description",
         content:
           "Review equipment tags submitted from the field, accept CMDB corrections, and resolve duplicate or unregistered asset records.",
       },
-      { property: "og:title", content: "Inventory Validation — FDNY Service Desk" },
+      { property: "og:title", content: "Inventory Validation — Fire Department Service Desk" },
       {
         property: "og:description",
         content: "Smart inventory validation queue for CMDB data quality.",

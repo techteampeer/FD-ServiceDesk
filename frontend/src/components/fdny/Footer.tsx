@@ -30,11 +30,11 @@ export function Footer() {
         </nav>
         <div className="mt-6 flex flex-col gap-2 border-t pt-6 text-xs text-muted-foreground">
           <p className="font-semibold text-foreground">
-            FDNY IT Service Portal
+            Fire Department IT Service Portal
           </p>
           <p>
-            This is an independent design concept. It is not an official Fire Department of the City
-            of New York website and is not affiliated with or authorized by the City of New York.
+            This is an independent design concept. It is not an official Fire Department website and
+            is not affiliated with or authorized by any government agency.
             All data shown is fictional.
           </p>
         </div>

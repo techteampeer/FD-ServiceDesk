@@ -61,13 +61,13 @@ import {
 export const Route = createFileRoute("/staff/")({
   head: () => ({
     meta: [
-      { title: "IT Service Desk Dashboard — FDNY Portal" },
+      { title: "IT Service Desk Dashboard — Fire Department Portal" },
       {
         name: "description",
         content:
           "Concept service-desk dashboard: case queue, device recovery, connectivity automation, inventory validation, and resolution analytics.",
       },
-      { property: "og:title", content: "IT Service Desk Dashboard — FDNY Portal" },
+      { property: "og:title", content: "IT Service Desk Dashboard — Fire Department Portal" },
       {
         property: "og:description",
         content:
@@ -491,7 +491,7 @@ function StaffPage() {
               {
                 key: "devices",
                 title: "Field devices in GLPI",
-                subtitle: "Computers + Phones in the FDNY entity",
+                subtitle: "Computers + Phones in the Fire Department entity",
                 value: summary?.devices.total ?? 0,
                 note: `${summary?.devices.withGps ?? 0} with GPS coordinates`,
               },
@@ -505,7 +505,7 @@ function StaffPage() {
               {
                 key: "cases",
                 title: "Cases in the queue",
-                subtitle: "Open and closed, FDNY entity",
+                subtitle: "Open and closed, Fire Department entity",
                 value: summary?.tickets.total ?? 0,
                 note: `${summary?.tickets.open ?? 0} still open`,
               },

@@ -44,13 +44,13 @@ import { automationSavings, savedReports, slaByPriority, volumeTrend } from "@/l
 export const Route = createFileRoute("/staff/reports")({
   head: () => ({
     meta: [
-      { title: "Reports — FDNY Service Desk" },
+      { title: "Reports — Fire Department Service Desk" },
       {
         name: "description",
         content:
           "Case volume, SLA attainment, resolution time, and the dispatches avoided by service automation.",
       },
-      { property: "og:title", content: "Reports — FDNY Service Desk" },
+      { property: "og:title", content: "Reports — Fire Department Service Desk" },
       {
         property: "og:description",
         content: "Service-desk reporting: volume, SLA, resolution time, and automation impact.",
