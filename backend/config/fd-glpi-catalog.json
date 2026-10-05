@@ -1,0 +1,664 @@
+{
+  "meta": {
+    "seed_id": "FD-GLPI-DEMO",
+    "seed_marker": "[SEED:FD-GLPI-DEMO]",
+    "synthetic": true,
+    "note": "100% synthetic demo data for the generic Fire Department demo, derived from the FDNY demo catalog. Locations reuse the same fictional addresses and coordinates for now, as separate Location records in this entity. Users get their own logins, employee IDs and e-mails because GLPI logins are global and user lookups are not entity-scoped. Asset tags, serials, ICCIDs and MSISDNs are reused: asset and ticket lookups are entity-scoped. Phone numbers use the reserved 555-01xx fictional range; e-mail uses the reserved .example TLD.",
+    "asset_itemtype": "Phone",
+    "legacy_asset_itemtype": "Computer",
+    "asset_tag_format": "BTDSYYYY###### (BTDS = department, YYYY = year the device was labeled, last 6 digits = unique identifier)",
+    "asset_tag_regex": "^BTDS(\\d{4})(\\d{6})$",
+    "expected_split": {
+      "tablet": 6,
+      "cellphone": 3
+    },
+    "ticket_identity_format": "[SEED:<seed_id>#<ticket key>] embedded in Ticket.content - stable across device renames, unlike the title",
+    "relationship_chain": "user -> device (Phone) -> location -> SIM/carrier -> ticket",
+    "derived_from": "config/fdny-glpi-catalog.json"
+  },
+  "entity": {
+    "key": "fd",
+    "name": "Fire Department",
+    "parent": "root",
+    "comment": "Synthetic demo entity for the generic Fire Department service-desk demo."
+  },
+  "locations": [
+    {
+      "key": "harbor-point",
+      "name": "Engine 312 / Ladder 88 - Harbor Point",
+      "address": "1400 Marlin Row",
+      "town": "Brooklyn",
+      "state": "NY",
+      "postcode": "11299",
+      "country": "USA",
+      "latitude": "40.664100",
+      "longitude": "-74.001200",
+      "comment": "Fictional firehouse. Basement apparatus bay has known RF dead zones."
+    },
+    {
+      "key": "ems-47",
+      "name": "EMS Station 47 - Northgate",
+      "address": "88-20 Northgate Boulevard",
+      "town": "Queens",
+      "state": "NY",
+      "postcode": "11499",
+      "country": "USA",
+      "latitude": "40.746100",
+      "longitude": "-73.811000",
+      "comment": "Fictional EMS station. Primary ePCR tablet fleet site."
+    },
+    {
+      "key": "depot",
+      "name": "Technology Depot - Riverbend",
+      "address": "2600 Riverbend Avenue",
+      "town": "Bronx",
+      "state": "NY",
+      "postcode": "10499",
+      "country": "USA",
+      "latitude": "40.823100",
+      "longitude": "-73.857000",
+      "comment": "Fictional staging and spare-pool depot. Asset tagging and imaging happen here."
+    },
+    {
+      "key": "academy",
+      "name": "EMS Training Academy - Fort Lenape",
+      "address": "15 Lenape Point Road",
+      "town": "Staten Island",
+      "state": "NY",
+      "postcode": "10399",
+      "country": "USA",
+      "latitude": "40.562300",
+      "longitude": "-74.139100",
+      "comment": "Fictional training academy. Drill-floor devices see heavy physical wear."
+    }
+  ],
+  "users": [
+    {
+      "key": "mruiz",
+      "login": "fd.mruiz",
+      "firstname": "Marisol",
+      "realname": "Ruiz",
+      "title": "EMT",
+      "location": "ems-47",
+      "employee_id": "910101",
+      "email": "mruiz@firedept.example"
+    },
+    {
+      "key": "dokonkwo",
+      "login": "fd.dokonkwo",
+      "firstname": "Daniel",
+      "realname": "Okonkwo",
+      "title": "Paramedic",
+      "location": "ems-47",
+      "employee_id": "910102",
+      "email": "dokonkwo@firedept.example"
+    },
+    {
+      "key": "tlindqvist",
+      "login": "fd.tlindqvist",
+      "firstname": "Tova",
+      "realname": "Lindqvist",
+      "title": "Lieutenant",
+      "location": "harbor-point",
+      "employee_id": "910103",
+      "email": "tlindqvist@firedept.example"
+    },
+    {
+      "key": "rcastellanos",
+      "login": "fd.rcastellanos",
+      "firstname": "Rafael",
+      "realname": "Castellanos",
+      "title": "Firefighter",
+      "location": "harbor-point",
+      "employee_id": "910104",
+      "email": "rcastellanos@firedept.example"
+    },
+    {
+      "key": "pdelacroix",
+      "login": "fd.pdelacroix",
+      "firstname": "Pierre",
+      "realname": "Delacroix",
+      "title": "Paramedic",
+      "location": "harbor-point",
+      "employee_id": "910105",
+      "email": "pdelacroix@firedept.example"
+    },
+    {
+      "key": "ayamamoto",
+      "login": "fd.ayamamoto",
+      "firstname": "Aiko",
+      "realname": "Yamamoto",
+      "title": "EMS Captain",
+      "location": "academy",
+      "employee_id": "910106",
+      "email": "ayamamoto@firedept.example"
+    },
+    {
+      "key": "kmensah",
+      "login": "fd.kmensah",
+      "firstname": "Kofi",
+      "realname": "Mensah",
+      "title": "Field Technician",
+      "location": "depot",
+      "employee_id": "910107",
+      "email": "kmensah@firedept.example"
+    },
+    {
+      "key": "snovak",
+      "login": "fd.snovak",
+      "firstname": "Simone",
+      "realname": "Novak",
+      "title": "Deputy Chief, Technology Operations",
+      "location": "depot",
+      "employee_id": "910108",
+      "email": "snovak@firedept.example"
+    }
+  ],
+  "manufacturers": [
+    {
+      "key": "ironclad",
+      "name": "Ironclad Mobility"
+    },
+    {
+      "key": "northstar",
+      "name": "NorthStar Rugged"
+    }
+  ],
+  "phone_types": [
+    {
+      "key": "tablet",
+      "name": "ePCR Tablet"
+    },
+    {
+      "key": "cellphone",
+      "name": "Cellphone"
+    }
+  ],
+  "phone_models": [
+    {
+      "key": "fr7",
+      "name": "Ironclad FR-7 Rugged Tablet",
+      "manufacturer": "ironclad",
+      "form_factor": "tablet"
+    },
+    {
+      "key": "fr9",
+      "name": "Ironclad FR-9 ePCR Tablet",
+      "manufacturer": "ironclad",
+      "form_factor": "tablet"
+    },
+    {
+      "key": "mt10",
+      "name": "NorthStar Medic Tab 10",
+      "manufacturer": "northstar",
+      "form_factor": "tablet"
+    },
+    {
+      "key": "cm5",
+      "name": "Ironclad CM-5 Rugged Handset",
+      "manufacturer": "ironclad",
+      "form_factor": "cellphone"
+    },
+    {
+      "key": "rg6",
+      "name": "NorthStar Ranger 6 Handset",
+      "manufacturer": "northstar",
+      "form_factor": "cellphone"
+    }
+  ],
+  "states": [
+    {
+      "key": "in-use",
+      "name": "In use"
+    },
+    {
+      "key": "in-stock",
+      "name": "In stock"
+    },
+    {
+      "key": "repair",
+      "name": "In repair"
+    },
+    {
+      "key": "lost",
+      "name": "Lost or stolen"
+    }
+  ],
+  "simcard_types": [
+    {
+      "key": "physical",
+      "name": "Physical SIM (4FF)"
+    },
+    {
+      "key": "esim",
+      "name": "eSIM"
+    }
+  ],
+  "line_operators": [
+    {
+      "key": "firstnet",
+      "name": "FirstNet",
+      "mcc": "313",
+      "mnc": "100",
+      "comment": "Synthetic carrier record for demo data. No real account referenced."
+    },
+    {
+      "key": "verizon",
+      "name": "Verizon Frontline",
+      "mcc": "311",
+      "mnc": "480",
+      "comment": "Synthetic carrier record for demo data. No real account referenced."
+    }
+  ],
+  "simcard_models": [
+    {
+      "key": "fn-b14",
+      "designation": "FirstNet Band 14 SIM (4FF)",
+      "simcard_type": "physical",
+      "manufacturer": "ironclad",
+      "comment": "Synthetic SIM model record."
+    },
+    {
+      "key": "vz-esim",
+      "designation": "Verizon Frontline eSIM Profile",
+      "simcard_type": "esim",
+      "manufacturer": "northstar",
+      "comment": "Synthetic eSIM profile record."
+    }
+  ],
+  "sims": [
+    {
+      "key": "sim-0301",
+      "device": "epcr-0301",
+      "simcard_model": "fn-b14",
+      "operator": "firstnet",
+      "iccid": "8901260000000012301",
+      "msisdn": "+12125550131"
+    },
+    {
+      "key": "sim-0302",
+      "device": "epcr-0302",
+      "simcard_model": "fn-b14",
+      "operator": "firstnet",
+      "iccid": "8901260000000012302",
+      "msisdn": "+12125550132"
+    },
+    {
+      "key": "sim-0303",
+      "device": "epcr-0303",
+      "simcard_model": "fn-b14",
+      "operator": "firstnet",
+      "iccid": "8901260000000012303",
+      "msisdn": "+12125550133"
+    },
+    {
+      "key": "sim-0304",
+      "device": "epcr-0304",
+      "simcard_model": "fn-b14",
+      "operator": "firstnet",
+      "iccid": "8901260000000012304",
+      "msisdn": "+12125550134"
+    },
+    {
+      "key": "sim-0305",
+      "device": "epcr-0305",
+      "simcard_model": "vz-esim",
+      "operator": "verizon",
+      "iccid": "8901260000000012305",
+      "msisdn": "+12125550135"
+    },
+    {
+      "key": "sim-0306",
+      "device": "epcr-0306",
+      "simcard_model": "vz-esim",
+      "operator": "verizon",
+      "iccid": "8901260000000012306",
+      "msisdn": "+12125550136"
+    },
+    {
+      "key": "sim-0307",
+      "device": "cell-0307",
+      "simcard_model": "fn-b14",
+      "operator": "firstnet",
+      "iccid": "8901260000000012307",
+      "msisdn": "+12125550137"
+    },
+    {
+      "key": "sim-0411",
+      "device": "cell-0411",
+      "simcard_model": "fn-b14",
+      "operator": "firstnet",
+      "iccid": "8901260000000004411",
+      "msisdn": "+12125550141"
+    },
+    {
+      "key": "sim-0412",
+      "device": "cell-0412",
+      "simcard_model": "vz-esim",
+      "operator": "verizon",
+      "iccid": "8901260000000004412",
+      "msisdn": "+12125550142"
+    }
+  ],
+  "itil_categories": [
+    {
+      "key": "cat-mobile",
+      "name": "Mobile Device",
+      "parent": null
+    },
+    {
+      "key": "cat-connectivity",
+      "name": "Connectivity",
+      "parent": "cat-mobile"
+    },
+    {
+      "key": "cat-hardware",
+      "name": "Hardware",
+      "parent": "cat-mobile"
+    },
+    {
+      "key": "cat-lost",
+      "name": "Lost or Stolen",
+      "parent": "cat-mobile"
+    },
+    {
+      "key": "cat-assetdata",
+      "name": "Asset Data",
+      "parent": null
+    },
+    {
+      "key": "cat-tagging",
+      "name": "Tagging",
+      "parent": "cat-assetdata"
+    }
+  ],
+  "devices": [
+    {
+      "key": "epcr-0301",
+      "phone_type": "tablet",
+      "name": "FD-EPCR-0301",
+      "asset_tag": "BTDS2026012301",
+      "serial": "IRN-FR9-7741201",
+      "model": "fr9",
+      "location": "ems-47",
+      "user": "mruiz",
+      "state": "in-use",
+      "comment": "ePCR tablet, medic unit 47-1."
+    },
+    {
+      "key": "epcr-0302",
+      "phone_type": "tablet",
+      "name": "FD-EPCR-0302",
+      "asset_tag": "BTDS2026012302",
+      "serial": "IRN-FR9-7741202",
+      "model": "fr9",
+      "location": "ems-47",
+      "user": "dokonkwo",
+      "state": "in-use",
+      "comment": "ePCR tablet, medic unit 47-2."
+    },
+    {
+      "key": "epcr-0303",
+      "phone_type": "tablet",
+      "name": "FD-EPCR-0303",
+      "asset_tag": "BTDS2026012303",
+      "serial": "IRN-FR9-7741203",
+      "model": "fr9",
+      "location": "harbor-point",
+      "user": "tlindqvist",
+      "state": "repair",
+      "comment": "ePCR tablet, company officer assignment."
+    },
+    {
+      "key": "epcr-0304",
+      "phone_type": "tablet",
+      "name": "FD-EPCR-0304",
+      "asset_tag": "BTDS2026012304",
+      "serial": "IRN-FR7-7740104",
+      "model": "fr7",
+      "location": "harbor-point",
+      "user": "rcastellanos",
+      "state": "lost",
+      "comment": "ePCR tablet, unaccounted for after box alarm."
+    },
+    {
+      "key": "epcr-0305",
+      "phone_type": "tablet",
+      "name": "FD-EPCR-0305",
+      "asset_tag": "BTDS2026012305",
+      "serial": "NST-MT10-556105",
+      "model": "mt10",
+      "location": "academy",
+      "user": "ayamamoto",
+      "state": "repair",
+      "comment": "Academy drill-floor tablet."
+    },
+    {
+      "key": "epcr-0306",
+      "phone_type": "tablet",
+      "name": "FD-EPCR-0306",
+      "asset_tag": "BTDS2026012306",
+      "serial": "NST-MT10-556106",
+      "model": "mt10",
+      "location": "academy",
+      "user": "ayamamoto",
+      "state": "in-use",
+      "comment": "Academy drill-floor tablet, eSIM pilot."
+    },
+    {
+      "key": "cell-0307",
+      "phone_type": "cellphone",
+      "name": "FD-CELL-0307",
+      "asset_tag": "BTDS2026012307",
+      "serial": "IRN-CM5-8830307",
+      "model": "cm5",
+      "location": "depot",
+      "user": "kmensah",
+      "state": "in-stock",
+      "comment": "Spare-pool handset. Physical label does not match this record - see tagging ticket."
+    },
+    {
+      "key": "cell-0411",
+      "phone_type": "cellphone",
+      "name": "FD-CELL-0411",
+      "asset_tag": "BTDS2025004411",
+      "serial": "IRN-CM5-8830411",
+      "model": "cm5",
+      "location": "harbor-point",
+      "user": "pdelacroix",
+      "state": "in-use",
+      "comment": "Company handset, 2025 labeling batch."
+    },
+    {
+      "key": "cell-0412",
+      "phone_type": "cellphone",
+      "name": "FD-CELL-0412",
+      "asset_tag": "BTDS2025004412",
+      "serial": "NST-RG6-4450412",
+      "model": "rg6",
+      "location": "depot",
+      "user": "snovak",
+      "state": "in-use",
+      "comment": "Technology operations handset, 2025 labeling batch."
+    }
+  ],
+  "tickets": [
+    {
+      "key": "tkt-lost-0304",
+      "scenario": "lost tablet",
+      "name": "Lost ePCR tablet FD-EPCR-0304 after box alarm at Harbor Point",
+      "device": "epcr-0304",
+      "requester": "rcastellanos",
+      "assignee": "kmensah",
+      "category": "cat-lost",
+      "type": 1,
+      "urgency": 4,
+      "impact": 3,
+      "status": 2,
+      "days_ago": 2,
+      "symptom": "Tablet was last seen on the rig after a box alarm and has not been returned to the charging cradle.",
+      "detail": [
+        "Member confirms the unit was used to start a patient care report on scene and was not recovered at return.",
+        "Quarters and apparatus were searched twice; the unit does not respond to remote locate.",
+        "Device is still enrolled and the line is still active."
+      ],
+      "carrier_note": "Requesting carrier line suspension pending recovery.",
+      "next_step": "Suspend the line, flag the asset as Lost or stolen, issue a spare from the Riverbend depot pool."
+    },
+    {
+      "key": "tkt-nosignal-0301",
+      "scenario": "no signal",
+      "name": "No FirstNet signal on FD-EPCR-0301 in EMS Station 47 apparatus bay",
+      "device": "epcr-0301",
+      "requester": "mruiz",
+      "assignee": "kmensah",
+      "category": "cat-connectivity",
+      "type": 1,
+      "urgency": 3,
+      "impact": 3,
+      "status": 2,
+      "days_ago": 5,
+      "symptom": "Tablet shows no bars anywhere inside the apparatus bay; signal returns outdoors.",
+      "detail": [
+        "Airplane mode toggled and device rebooted twice with no change.",
+        "A second tablet at the same station holds signal in the same spot, so this looks device or SIM specific.",
+        "ePCR reports queue locally and only flush once the crew is on the street."
+      ],
+      "carrier_note": "No carrier outage reported for the area at the time of the report.",
+      "next_step": "Reseat the physical SIM, verify the APN profile, compare against a known-good unit at the same location."
+    },
+    {
+      "key": "tkt-escalation-0302",
+      "scenario": "failed connectivity / escalation",
+      "name": "Repeated ePCR upload failures on FD-EPCR-0302 - escalated to carrier Tier 2",
+      "device": "epcr-0302",
+      "requester": "dokonkwo",
+      "assignee": "snovak",
+      "category": "cat-connectivity",
+      "type": 1,
+      "urgency": 4,
+      "impact": 4,
+      "status": 4,
+      "days_ago": 8,
+      "symptom": "Patient care reports fail to transmit and retry until the session times out, roughly three runs out of five.",
+      "detail": [
+        "Failures cluster mid-tour and are not tied to one location.",
+        "Moving the SIM into a spare chassis reproduced the failure, which points at the line rather than the hardware.",
+        "First-line troubleshooting exhausted at the depot."
+      ],
+      "carrier_note": "Escalated to carrier Tier 2 with the line MSISDN and ICCID attached; awaiting carrier response.",
+      "next_step": "Hold pending carrier Tier 2; if unresolved within one tour, reprovision the line onto a replacement SIM."
+    },
+    {
+      "key": "tkt-tagging-0307",
+      "scenario": "incorrect asset tag",
+      "name": "Asset tag mismatch on FD-CELL-0307 - physical label does not match the GLPI record",
+      "device": "cell-0307",
+      "requester": "kmensah",
+      "assignee": "snovak",
+      "category": "cat-tagging",
+      "type": 2,
+      "urgency": 2,
+      "impact": 2,
+      "status": 2,
+      "days_ago": 11,
+      "symptom": "The physical sticker on the handset reads BTDS2025012307 while this GLPI record carries BTDS2026012307.",
+      "detail": [
+        "Both strings are valid BTDSYYYY###### tags, so the conflict is a labeling-year error rather than a format error.",
+        "The unique identifier 012307 matches on both, so this is the same physical device.",
+        "The 2026 relabeling batch was applied at the depot; the superseded 2025 sticker was never removed.",
+        "Reported during a spare-pool inventory count; the handset is not in service."
+      ],
+      "carrier_note": "No carrier impact.",
+      "next_step": "Confirm the authoritative tag against the depot labeling log, remove the superseded sticker, reconcile the inventory count."
+    },
+    {
+      "key": "tkt-damaged-0305",
+      "scenario": "damaged device",
+      "name": "Cracked digitizer on FD-EPCR-0305 after drop during Academy drill",
+      "device": "epcr-0305",
+      "requester": "ayamamoto",
+      "assignee": "kmensah",
+      "category": "cat-hardware",
+      "type": 1,
+      "urgency": 3,
+      "impact": 2,
+      "status": 2,
+      "days_ago": 6,
+      "symptom": "Screen is cracked across the lower third and touch input is dead in that band.",
+      "detail": [
+        "Unit was dropped onto the drill floor from stretcher height; the case absorbed part of the impact.",
+        "Device still boots and holds a charge, and the SIM still registers.",
+        "Signature capture is unusable, which blocks report closeout."
+      ],
+      "carrier_note": "Line left active; the device is physically damaged, not disconnected.",
+      "next_step": "Swap to a depot spare, send the chassis for digitizer replacement, keep the line on the original number."
+    },
+    {
+      "key": "tkt-nosignal-0306",
+      "scenario": "no signal",
+      "name": "Verizon Frontline eSIM will not activate on FD-EPCR-0306",
+      "device": "epcr-0306",
+      "requester": "ayamamoto",
+      "assignee": "kmensah",
+      "category": "cat-connectivity",
+      "type": 1,
+      "urgency": 3,
+      "impact": 3,
+      "status": 2,
+      "days_ago": 4,
+      "symptom": "The eSIM profile downloads but the device never registers on the network; status stays on searching.",
+      "detail": [
+        "Profile was re-downloaded twice and the device was rebooted between attempts.",
+        "Wi-Fi works normally in the same spot, so this is cellular-side only.",
+        "Unit is part of the eSIM pilot group, so there is no physical SIM to fall back to."
+      ],
+      "carrier_note": "Carrier line shows as provisioned on the account; activation appears stuck on the device side.",
+      "next_step": "Delete and reprovision the eSIM profile from the carrier portal; if it fails again, escalate with the device EID."
+    },
+    {
+      "key": "tkt-escalation-0411",
+      "scenario": "failed connectivity / escalation",
+      "name": "Intermittent transmit drops on FD-CELL-0411 - Tier 2 escalation, 2025 handset batch",
+      "device": "cell-0411",
+      "requester": "pdelacroix",
+      "assignee": "snovak",
+      "category": "cat-connectivity",
+      "type": 1,
+      "urgency": 4,
+      "impact": 3,
+      "status": 4,
+      "days_ago": 14,
+      "symptom": "Connection drops mid-transmit and the message has to be re-sent, several times per tour.",
+      "detail": [
+        "Three other handsets from the same 2025 labeling batch show the same behaviour, which suggests a batch-level issue.",
+        "Signal strength is normal at the moment the drop happens.",
+        "A replacement SIM did not resolve it."
+      ],
+      "carrier_note": "Escalated to carrier Tier 2 as a suspected batch issue; the affected MSISDN list was supplied.",
+      "next_step": "Hold pending carrier Tier 2 and a firmware review of the 2025 handset batch."
+    },
+    {
+      "key": "tkt-damaged-0303",
+      "scenario": "damaged device",
+      "name": "Damaged charging port on FD-EPCR-0303 - unit out of service",
+      "device": "epcr-0303",
+      "requester": "tlindqvist",
+      "assignee": "kmensah",
+      "category": "cat-hardware",
+      "type": 1,
+      "urgency": 3,
+      "impact": 3,
+      "status": 2,
+      "days_ago": 9,
+      "symptom": "The charging port will not hold a cable; the device only charges intermittently in the cradle.",
+      "detail": [
+        "Port pins look bent; likely cable strain in the cab mount.",
+        "Battery will not reach a full charge, so the unit cannot cover a full tour.",
+        "Device has been pulled from the rig and marked out of service."
+      ],
+      "carrier_note": "No carrier impact; the line remains active.",
+      "next_step": "Depot repair for port replacement; cover the assignment with a spare in the interim."
+    }
+  ]
+}
