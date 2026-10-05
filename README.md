@@ -1,6 +1,6 @@
 # IT SERVICE DESK — Demo IA (React + Node + Gemini + GLPI)
 
-Demo de mesa de ayuda con dos vistas lado a lado:
+Genearl Fire department Demo:
 
 - **Usuario** abre un ticket conversando con el asistente (Gemini clasifica y crea el ticket en Jira).
 - **Técnico** ve el ticket, una **propuesta de solución** y **casos similares** (retrieval sobre `corpus_es.json`), y decide **cerrar** o **escalar** (comentario + transición en Jira).
