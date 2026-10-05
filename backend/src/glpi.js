@@ -61,14 +61,34 @@ let session = { token: null, expiresAt: 0 };
 let sessionInFlight = null;
 
 async function openSession() {
-  const { apiUrl, appToken, userToken } = cfg();
+  const { apiUrl, appToken, userToken, entityId } = cfg();
   const res = await fetch(`${apiUrl}/initSession`, {
     headers: { "App-Token": appToken, Authorization: `user_token ${userToken}` },
   });
   if (!res.ok) throw new Error(`Failed to authenticate with GLPI API (HTTP ${res.status})`);
   const data = await res.json();
   if (!data.session_token) throw new Error("GLPI initSession returned no session_token");
-  session = { token: data.session_token, expiresAt: Date.now() + SESSION_TTL_MS };
+
+  const token = data.session_token;
+  session = { token, expiresAt: Date.now() + SESSION_TTL_MS };
+
+  // Forzar el cambio de entidad activa inmediatamente después de abrir sesión
+  if (entityId) {
+    try {
+      await fetch(`${apiUrl}/changeActiveEntities`, {
+        method: "POST",
+        headers: {
+          "App-Token": appToken,
+          "Session-Token": token,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ entities_id: parseInt(entityId, 10), is_recursive: true }),
+      });
+    } catch (err) {
+      console.error(`[GLPI] Error al establecer entidad activa ${entityId}:`, err.message);
+    }
+  }
+
   return session.token;
 }
 
@@ -118,9 +138,6 @@ export async function glpiGet(path, params = {}) {
   url.searchParams.set("expand_dropdowns", "0");
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
 
-  // One retry covers an expired session (401) and the HTML error page GLPI
-  // returns when it throttles a burst of requests - res.json() would otherwise
-  // throw a bare SyntaxError on "<!DOCTYPE...".
   for (let attempt = 0; attempt < 2; attempt++) {
     const res = await fetch(url, { headers: await getHeaders(attempt > 0) });
     if (res.status === 404) return null;
@@ -146,7 +163,6 @@ const eq = (a, b) => String(a ?? "").trim().toLowerCase() === String(b ?? "").tr
 const rows = (r) => (Array.isArray(r) ? r : r ? [r] : []);
 
 /* ---------------- dropdown + location caches ---------------- */
-// Failures are NOT cached: a transient error must not permanently blank a name.
 const dropdownCache = new Map();
 const primed = new Set();
 
@@ -164,13 +180,6 @@ export async function dropdownName(itemtype, id) {
   }
 }
 
-/**
- * Loads whole dropdown tables in one request each and fills the cache.
- *
- * Enriching a fleet of N assets otherwise fans out to ~5N concurrent GLPI
- * requests, which the server throttles - names then come back null. Priming
- * turns that into one request per table.
- */
 export async function primeDropdowns(
   itemtypes = ["PhoneType", "PhoneModel", "ComputerType", "ComputerModel", "Manufacturer", "State"],
 ) {
@@ -190,12 +199,6 @@ export async function primeDropdowns(
   );
 }
 
-/**
- * Warms the caches for data that does not change during a demo (dropdown tables
- * and locations). GLPI serialises requests inside one session, so the only way
- * to be fast is to make fewer calls per request - this moves ~8 round trips off
- * the first user request. Failures leave the caches unprimed; lookups still work.
- */
 export function warmCaches() {
   return Promise.all([
     primeDropdowns(["PhoneType", "PhoneModel", "ComputerType", "ComputerModel", "Manufacturer", "State", "ITILCategory"]),
@@ -206,11 +209,6 @@ export function warmCaches() {
 const locationCache = new Map();
 let locationsPrimed = false;
 
-/**
- * Loads every Location in one request and fills the cache, so enriching a fleet
- * or a ticket list needs no per-location round trips. Failures are not cached:
- * the flag only flips on success, and per-id lookups still work.
- */
 export async function primeLocations() {
   if (locationsPrimed) return;
   try {
@@ -238,12 +236,6 @@ export async function getLocationCached(id) {
 }
 
 /* ---------------- users ---------------- */
-/**
- * Identifies a user from live GLPI by login, employee/badge number
- * (User.registration_number) or e-mail address, in that order. No static CSV or
- * search-option ids are involved: lookups use real column names so they stay
- * valid across GLPI configurations.
- */
 export async function identifyUser(identifier) {
   const id = String(identifier ?? "").trim();
   if (!id) return null;
@@ -266,13 +258,11 @@ export async function identifyUser(identifier) {
   return null;
 }
 
-// GLPI keeps addresses in UserEmail, so User.email is usually empty.
 async function defaultEmail(userId) {
   const list = rows(await glpiGet(`/User/${userId}/UserEmail`));
   return (list.find((e) => Number(e.is_default)) || list[0])?.email || null;
 }
 
-// Additive only: every original GLPI field is preserved for existing callers.
 function decorateUser(user, knownEmail) {
   if (!user) return user;
   const displayName = [user.firstname, user.realname].filter(Boolean).join(" ").trim() || user.name;
@@ -285,11 +275,6 @@ function decorateUser(user, knownEmail) {
 }
 
 /* ---------------- assets ---------------- */
-/**
- * Every asset assigned to a user, across BOTH itemtypes: Computer (tablets) and
- * Phone (cellphones). Search option 70 is the assigned user on both itemtypes;
- * the equals searchtype keeps it exact.
- */
 export async function getUserDevices(userId) {
   await primeDropdowns();
   const devices = [];
@@ -329,12 +314,12 @@ export async function enrichAsset(asset, itemtype = ASSET_ITEMTYPE) {
   const location = asset.locations_id ? await getLocationCached(asset.locations_id) : null;
 
   return {
-    ...asset, // keep every raw GLPI field existing callers may already read
+    ...asset,
     id: asset.id,
     name: asset.name,
-    itemType: kind, // real GLPI itemtype: "Computer" or "Phone"
-    assetTag: asset.otherserial || null, // BTDS inventory number when present
-    type, // "ePCR Tablet" | "Cellphone"
+    itemType: kind,
+    assetTag: asset.otherserial || null,
+    type,
     deviceType: type,
     serial: asset.serial || null,
     manufacturer,
@@ -343,25 +328,12 @@ export async function enrichAsset(asset, itemtype = ASSET_ITEMTYPE) {
     userId: asset.users_id ?? null,
     locationId: asset.locations_id ?? null,
     locationName: location?.name ?? null,
-    unit: location?.name ?? "No location assigned", // field the current kiosk UI reads
+    unit: location?.name ?? "No location assigned",
     latitude: location?.latitude ?? null,
     longitude: location?.longitude ?? null,
   };
 }
 
-/**
- * Resolves the canonical GLPI asset reference for ticket linking.
- *
- * Resolution order:
- *   1. GLPI id + itemType. Ids are per-table, so Computer#50 and Phone#50 are
- *      different assets - the itemType is verified against GLPI, and a wrong
- *      hint (e.g. a caller that still hardcodes "Phone") falls back to the
- *      other itemtype instead of mislinking.
- *   2. BTDS inventory tag, searched across both itemtypes.
- *   3. Exact device name, across both itemtypes. This is last and is only
- *      reached for assets that carry no tag and no serial - which is the case
- *      for the current FDNY-TAB-* / FDNY-CEL-* fleet.
- */
 export async function resolveAssetRef({ deviceId, assetTag, deviceTag, name, itemType } = {}) {
   const hint = normalizeItemType(itemType);
   const order = hint ? [hint, ...ASSET_ITEMTYPES.filter((t) => t !== hint)] : ASSET_ITEMTYPES;
@@ -391,7 +363,6 @@ export async function resolveAssetRef({ deviceId, assetTag, deviceTag, name, ite
     }
   }
 
-  // Name is the only identifier Claudio's current fleet carries.
   for (const candidate of [name, deviceTag]) {
     const wanted = String(candidate ?? "").trim();
     if (!wanted) continue;
@@ -404,9 +375,6 @@ export async function resolveAssetRef({ deviceId, assetTag, deviceTag, name, ite
   return null;
 }
 
-/**
- * Gets details for a location ID.
- */
 export async function getLocation(locationId) {
   const location = await glpiGet(`/Location/${locationId}`);
   if (!location) throw new Error("Location not found");
@@ -414,9 +382,6 @@ export async function getLocation(locationId) {
 }
 
 /* ---------------- tickets ---------------- */
-/**
- * Searches for an ITIL Category by name or creates it dynamically under FDNY entity.
- */
 export async function getOrCreateCategory(categoryName) {
   const name = String(categoryName ?? "").trim();
   if (!name) return null;
@@ -436,9 +401,6 @@ export async function getOrCreateCategory(categoryName) {
   return Array.isArray(created) ? created[0]?.id : created?.id;
 }
 
-/**
- * Creates a new Ticket in GLPI scoped to the target entity.
- */
 export async function createTicket(payload) {
   const { apiUrl, entityId } = cfg();
   const res = await fetch(`${apiUrl}/Ticket`, {
@@ -451,7 +413,6 @@ export async function createTicket(payload) {
   return Array.isArray(created) ? created[0] : created;
 }
 
-/** Updates an existing item (used to close a ticket after its asset is linked). */
 export async function updateItem(itemtype, id, input) {
   const { apiUrl } = cfg();
   const res = await fetch(`${apiUrl}/${itemtype}/${id}`, {
@@ -463,11 +424,6 @@ export async function updateItem(itemtype, id, input) {
   return res.json();
 }
 
-/**
- * Links an asset to a Ticket via Item_Ticket, preserving the real itemtype:
- * Computers link as Computer, Phones as Phone. An unrecognized itemtype is
- * rejected rather than silently rewritten.
- */
 export async function linkAssetToTicket(ticketId, itemType, itemId) {
   const itemtype = normalizeItemType(itemType);
   if (!itemtype) {
