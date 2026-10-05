@@ -13,7 +13,8 @@
 //     already exists in the target entity is reused, so reruns add nothing new.
 //   - Every write is scoped to the "Fire Department" entity. Records owned by
 //     any other entity (e.g. "Fire Department New York City") are never matched
-//     or reused; only global dropdowns and Root records shared recursively are.
+//     or reused, except shared dropdowns (SHARED_TYPES), which GLPI keeps unique
+//     across entities and which are only referenced by id, never modified.
 //   - Aborts if the target entity resolves to the FDNY entity or sits below it.
 // ============================================================
 
@@ -31,17 +32,23 @@ const same = (row, match) => Object.entries(match).every(([f, v]) => norm(row[f]
 const stats = { exists: 0, created: 0, planned: 0 };
 let ENT = null;
 
+// Shared dropdowns are unique across ALL entities in GLPI (e.g. State names, LineOperator mcc/mnc),
+// so they are listed while every entity is visible and reused wherever they live - referenced by id,
+// never modified. Everything else is listed inside the target entity only.
+const SHARED_TYPES = ["Manufacturer", "PhoneType", "PhoneModel", "State", "DeviceSimcardType", "LineOperator", "DeviceSimcard", "UserTitle"];
+const sharedCache = new Map();
+
 // One listing per itemtype per run; created rows are appended so later lookups see them.
 const cache = new Map();
 async function all(itemtype) {
-  if (!cache.has(itemtype)) cache.set(itemtype, await G.listAll(itemtype));
-  return cache.get(itemtype);
+  const c = SHARED_TYPES.includes(itemtype) ? sharedCache : cache;
+  if (!c.has(itemtype)) c.set(itemtype, await G.listAll(itemtype));
+  return c.get(itemtype);
 }
 
-// Records this entity owns must live in it; shared ones may also come from Root (recursive).
+// Records this entity owns must live in it; shared dropdowns match by name in any entity.
 const owned = (row) => Number(row.entities_id) === ENT;
-const sharedOk = (row) =>
-  row.entities_id === undefined || owned(row) || (Number(row.entities_id) === 0 && Number(row.is_recursive) === 1);
+const sharedOk = () => true;
 
 /** Returns the id of a matching record, or creates one (only with --apply). */
 async function ensure(itemtype, label, match, input, { scope = owned } = {}) {
@@ -128,6 +135,8 @@ async function main() {
 
   ENT = await resolveEntity();
   if (ENT === null) return;
+  // resolveEntity() left every entity active: list the shared dropdowns now, before narrowing.
+  for (const itemtype of SHARED_TYPES) await all(itemtype);
   // Non-recursive: reads and writes below see only this entity plus shared Root records.
   await G.changeActiveEntities(ENT, false);
 
