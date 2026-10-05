@@ -29,7 +29,7 @@ const MARK = (key) => `[SEED:${CATALOG.meta.seed_id}#${key}]`;
 
 const norm = (v) => String(v ?? "").replace(/\s+/g, " ").trim().toLowerCase();
 const same = (row, match) => Object.entries(match).every(([f, v]) => norm(row[f]) === norm(v));
-const stats = { exists: 0, created: 0, planned: 0 };
+const stats = { exists: 0, created: 0, planned: 0, skipped: 0 };
 let ENT = null;
 
 // Shared dropdowns are unique across ALL entities in GLPI (e.g. State names, LineOperator mcc/mnc),
@@ -226,14 +226,22 @@ async function main() {
         users_id: ids.user[d.user] ?? 0,
         locations_id: ids.loc[d.location] ?? 0,
       });
-      await ensureSub("Phone", devId, "Item_DeviceSimcard", `ICCID ${s.iccid} on ${d.name}`, { serial: s.iccid }, {
-        itemtype: "Phone",
-        items_id: devId,
-        devicesimcards_id: ids.simmodel[s.simcard_model] ?? 0,
-        serial: s.iccid,
-        lines_id: lineId ?? 0,
-        entities_id: ENT,
-      });
+      try {
+        await ensureSub("Phone", devId, "Item_DeviceSimcard", `ICCID ${s.iccid} on ${d.name}`, { serial: s.iccid }, {
+          itemtype: "Phone",
+          items_id: devId,
+          devicesimcards_id: ids.simmodel[s.simcard_model] ?? 0,
+          serial: s.iccid,
+          lines_id: lineId ?? 0,
+          entities_id: ENT,
+        });
+      } catch (e) {
+        // Only GLPI's add-permission refusal is tolerated; any other error still stops the run.
+        const denied = e instanceof G.GlpiError && /ERROR_GLPI_ADD/.test(e.message) && /permission to perform this action/i.test(e.message);
+        if (!denied) throw e;
+        stats.skipped++;
+        console.warn(`  [skipped] Item_DeviceSimcard ICCID ${s.iccid} on ${d.name} - WARNING: GLPI denied permission to add SIM links; the device has no SIM/carrier record until this is created.`);
+      }
     }
   }
 
@@ -278,7 +286,7 @@ async function main() {
 
 try {
   await main();
-  console.log(`\nDone. exists=${stats.exists} ${APPLY ? `created=${stats.created}` : `would create=${stats.planned}`}`);
+  console.log(`\nDone. exists=${stats.exists} ${APPLY ? `created=${stats.created}` : `would create=${stats.planned}`} skipped=${stats.skipped}`);
 } catch (e) {
   console.error(`\nFAILED: ${e.message}`);
   process.exitCode = 1;
