@@ -50,7 +50,7 @@ jobs:
           flags: --allow-unauthenticated
           env_vars: |
             GLPI_BASE_URL=https://glpi.peer-consulting.com/apirest.php
-            GLPI_ENTITY_ID=1
+            GLPI_ENTITY_ID=5
             GCS_BUCKET_NAME=itsm-general-demo
             GOOGLE_CLOUD_PROJECT=itservicedesk-502618
             VERTEX_LOCATION=us-central1
