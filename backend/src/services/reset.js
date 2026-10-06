@@ -71,7 +71,7 @@ export async function simulateDeviceReset({ deviceId, assetTag, name, itemType, 
       : {
           code: unreachable ? "device_unreachable" : "reset_failed",
           detail: unreachable
-            ? "Asset is flagged Lost or stolen in GLPI, so the reset could not be delivered."
+            ? "Asset is flagged Lost or stolen, so the reset could not be delivered."
             : "The simulated reset did not complete.",
         },
     note: "Simulated for the demo. No carrier, MDM or Workspace ONE system was contacted.",
@@ -142,7 +142,7 @@ export async function resetDeviceAndRecord({ userId, deviceId, assetTag, name, i
 
   return {
     ...reset,
-    ticketId: `GLPI-2026-0${ticket.id}`,
+    ticketId: `${ticket.id}`,
     rawTicketId: ticket.id,
     ticketStatus: ticketClosed ? "CLOSED" : "NEW",
     assetLinked,

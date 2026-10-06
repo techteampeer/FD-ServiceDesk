@@ -1,10 +1,10 @@
 {
   "note": "DEMO role mapping. Every FDNY demo user currently holds only the GLPI Self-Service profile, so the live data carries no usable privilege signal. Role resolution checks real GLPI profiles FIRST; this file is the fallback. When proper profiles are assigned in GLPI, empty staffLogins/staffBadges and nothing else has to change.",
   "staffProfiles": ["Technician", "Supervisor", "Admin", "Super-Admin", "Hotliner"],
-  "staffLogins": ["kmensah", "snovak"],
+  "staffLogins": ["kmensah", "snovak", "claudio_demo"],
   "staffBadges": ["900107", "900108"],
   "roleLabels": {
-    "staff": "Service desk",
-    "user": "FDNY end user"
+    "staff": "Service Desk",
+    "user": "End User"
   }
 }

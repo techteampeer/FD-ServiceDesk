@@ -32,7 +32,7 @@ router.get("/", requireSelfOrStaff("userId"), async (req, res) => {
 router.get("/:id", requireStaff, async (req, res) => {
   try {
     const ticket = await getTicket(req.params.id);
-    if (!ticket) return res.status(404).json({ error: "Ticket not found in the FDNY entity." });
+    if (!ticket) return res.status(404).json({ error: "Ticket not found." });
     res.json({ ticket });
   } catch (error) {
     console.error("Error in /api/tickets/:id:", error);

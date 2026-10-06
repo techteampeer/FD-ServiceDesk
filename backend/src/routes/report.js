@@ -86,7 +86,7 @@ Raised by the service desk on behalf of the member. Operator: ${operator.login} 
 
     res.json({
       success: true,
-      ticketId: `GLPI-2026-0${createdTicketId}`,
+      ticketId: `${createdTicketId}`,
       rawTicketId: createdTicketId,
       status: "NEW",
       assetLinked,

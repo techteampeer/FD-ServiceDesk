@@ -88,7 +88,7 @@ export function ticketToServiceCase(t: GlpiTicket): ServiceCase {
   const content = String((t as { content?: string }).content ?? "");
 
   return {
-    id: t.reference ?? `GLPI-${t.id}`,
+    id: t.reference ?? `#${t.id}`,
     issue: t.name,
     requester: t.requester?.name ?? "Unknown requester",
     requesterTitle: t.requester?.login ? `Login ${t.requester.login}` : "Fire Department member",

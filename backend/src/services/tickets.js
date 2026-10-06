@@ -192,7 +192,7 @@ export async function expandTicket(ticket, ctx = null) {
   return {
     id: ticket.id,
     glpiId: ticket.id,
-    reference: `GLPI-2026-0${ticket.id}`,
+    reference: `${ticket.id}`,
     name: ticket.name,
     content: ticket.content ?? null,
     status: Number(ticket.status),
