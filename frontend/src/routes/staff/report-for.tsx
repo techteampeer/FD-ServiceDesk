@@ -37,7 +37,7 @@ export const Route = createFileRoute("/staff/report-for")({
       {
         name: "description",
         content:
-          "Service-desk intake: find a GLPI user, load their assigned equipment and raise a real GLPI ticket on their behalf.",
+          "Service-desk intake: find a user, load their assigned equipment and raise a real service ticket on their behalf.",
       },
     ],
   }),
@@ -80,8 +80,6 @@ function ReportForPage() {
   const [created, setCreated] = useState<ReportTicketResult | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Devices are ALWAYS the confirmed member's, re-read whenever that changes,
-  // so equipment from a previously searched person can never carry over.
   useEffect(() => {
     if (!member) {
       setDevices([]);
@@ -119,7 +117,7 @@ function ReportForPage() {
     try {
       const found = await searchUsers(q);
       setMatches(found);
-      if (!found.length) setSearchError("No GLPI user in the Fire Department entity matches that.");
+      if (!found.length) setSearchError("No user in the Fire Department entity matches that.");
     } catch (e) {
       setSearchError(e instanceof Error ? e.message : "The search failed.");
       setMatches(null);
@@ -145,7 +143,6 @@ function ReportForPage() {
         text,
         category,
         urgency,
-        // The member stays the GLPI requester; the backend records the operator.
         userId: member.id,
         device: selected,
       });
@@ -188,8 +185,8 @@ function ReportForPage() {
             <UserRound className="size-7 text-primary" /> Report for a member
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Take a call, find the member in GLPI, load their assigned equipment and raise a real
-            GLPI ticket in their name.
+            Take a call, find the member, load their assigned equipment and raise a real service
+            ticket in their name.
           </p>
         </header>
 
@@ -199,8 +196,8 @@ function ReportForPage() {
               <CheckCircle2 className="size-5 text-success" /> {created.ticketId}
             </p>
             <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
-              <Field label="Requester in GLPI" value={member?.displayName ?? "—"} />
-              <Field label="Status in GLPI" value={created.status} />
+              <Field label="Requester" value={member?.displayName ?? "—"} />
+              <Field label="Status" value={created.status} />
               <Field
                 label="Linked asset"
                 value={
@@ -229,7 +226,7 @@ function ReportForPage() {
             <Card className="gap-0 rounded-xl p-6 shadow-card">
               <h2 className="font-display text-lg font-bold">1 · Find the member</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Search GLPI by login, employee/badge number, name or email.
+                Search by login, employee/badge number, name or email.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <div className="relative min-w-60 flex-1">
@@ -245,12 +242,12 @@ function ReportForPage() {
                       }
                     }}
                     placeholder="e.g. 900103, tlindqvist, or an email address"
-                    aria-label="Search GLPI users"
+                    aria-label="Search users"
                   />
                 </div>
                 <Button onClick={runSearch} disabled={searching}>
                   {searching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-                  Search GLPI
+                  Search member
                 </Button>
               </div>
               {searchError ? <p className="mt-3 text-sm text-primary">{searchError}</p> : null}
@@ -274,7 +271,7 @@ function ReportForPage() {
                           </span>
                         </span>
                         <span className="mt-0.5 block text-xs text-muted-foreground">
-                          GLPI user {u.id} · login {u.login}
+                          User {u.id} · login {u.login}
                           {u.employeeId ? ` · employee ${u.employeeId}` : ""}
                           {u.email ? ` · ${u.email}` : ""}
                         </span>
@@ -293,12 +290,12 @@ function ReportForPage() {
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {devicesState === "loading"
-                    ? "Reading their assigned assets from GLPI…"
+                    ? "Reading their assigned assets…"
                     : devicesState === "error"
-                      ? "Their equipment could not be read from GLPI."
+                      ? "Their equipment could not be read."
                       : devices.length
-                        ? `${devices.length} asset${devices.length === 1 ? "" : "s"} assigned to them in GLPI.`
-                        : "GLPI has no equipment assigned to this member. A ticket can still be raised without an asset."}
+                        ? `${devices.length} asset${devices.length === 1 ? "" : "s"} assigned to them.`
+                        : "No equipment assigned to this member. A ticket can still be raised without an asset."}
                 </p>
 
                 {devices.length ? (
@@ -331,7 +328,6 @@ function ReportForPage() {
                   </div>
                 ) : null}
 
-                {/* Keyed to the asset, so the map can never show the previous one. */}
                 {selected?.latitude && selected?.longitude ? (
                   <DeviceMap
                     key={`onbehalf-${selected.itemType}-${selected.id}-${selected.latitude},${selected.longitude}`}
@@ -405,11 +401,11 @@ function ReportForPage() {
                   <Button onClick={submit} disabled={submitting}>
                     {submitting ? (
                       <>
-                        <Loader2 className="size-4 animate-spin" /> Creating in GLPI…
+                        <Loader2 className="size-4 animate-spin" /> Creating ticket…
                       </>
                     ) : (
                       <>
-                        <Ticket className="size-4" /> Raise the GLPI ticket
+                        <Ticket className="size-4" /> Raise the service ticket
                       </>
                     )}
                   </Button>
@@ -418,7 +414,7 @@ function ReportForPage() {
                   </Button>
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">
-                  {member.displayName} is recorded as the GLPI requester; you are recorded as the
+                  {member.displayName} is recorded as the requester; you are recorded as the
                   operator who took the call.
                 </p>
               </Card>

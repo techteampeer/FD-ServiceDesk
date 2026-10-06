@@ -7,7 +7,6 @@ import { Footer } from "@/components/fdny/Footer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -27,7 +26,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { cn } from "@/lib/utils";
 import { staffNav } from "@/lib/nav";
 import { useRequireStaff } from "@/lib/session";
-import { staffUser } from "@/lib/mock-data";
 import { type DeviceHealth } from "@/lib/portal-data";
 import { getFleet, type GlpiDevice } from "@/lib/api";
 import { toDeviceRow, useLiveLocation, type DeviceRow } from "@/lib/use-live-devices";
@@ -59,12 +57,10 @@ const healthStyles: Record<DeviceHealth, string> = {
   "Needs Attention": "border-warning/40 bg-warning/15 text-warning-foreground",
 };
 
-
 const dash = (v: string | number | null | undefined) =>
   v === null || v === undefined || v === "" ? "—" : String(v);
 
 function StaffDevicesPage() {
-  // A member who types this URL is redirected to the member portal.
   const { allowed, navUser } = useRequireStaff();
   const [query, setQuery] = useState("");
   const [health, setHealth] = useState("all");
@@ -73,8 +69,6 @@ function StaffDevicesPage() {
   const [selected, setSelected] = useState<DeviceRow | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // The whole FDNY fleet from GLPI: Computers and Phones. No sample rows - the
-  // live data covers every asset the demo has.
   const [liveDevices, setLiveDevices] = useState<GlpiDevice[]>([]);
   const [liveState, setLiveState] = useState<"loading" | "ready" | "error">("loading");
   const [liveError, setLiveError] = useState<string | null>(null);
@@ -101,8 +95,6 @@ function StaffDevicesPage() {
   const allRows = useMemo<DeviceRow[]>(() => liveDevices.map(toDeviceRow), [liveDevices]);
 
   const types = useMemo(() => Array.from(new Set(allRows.map((d) => d.type))), [allRows]);
-  // GLPI state names ("In use", "In repair", ...), not invented MDM words -
-  // the hardcoded list matched no row, so the filter returned nothing.
   const healths = useMemo(
     () => Array.from(new Set(allRows.map((d) => d.health).filter(Boolean) as string[])).sort(),
     [allRows],
@@ -121,13 +113,10 @@ function StaffDevicesPage() {
     );
   }, [allRows, query, health, type]);
 
-  // Authoritative location detail for the selected live asset.
   const selectedLocation = useLiveLocation(
     selected?.source === "live" ? selected.locationId : null,
   );
 
-  // Health telemetry needs an MDM feed we do not have, so the tiles show real
-  // catalog facts instead of three permanent zeroes.
   const counts = {
     total: allRows.length,
     computers: liveDevices.filter((d) => d.itemType === "Computer").length,
@@ -135,8 +124,6 @@ function StaffDevicesPage() {
     tagged: liveDevices.filter((d) => d.assetTag).length,
   };
 
-  // Simulated: nothing is sent to an MDM or a carrier, so say so rather than
-  // reporting a delivered command.
   const run = (label: string) => {
     setBusy(true);
     setTimeout(() => {
@@ -163,7 +150,7 @@ function StaffDevicesPage() {
             <Smartphone className="size-7 text-primary" /> Field Devices
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Fire Department equipment in the GLPI asset catalog, with the simulated remote actions the service desk can run
+            Fire Department equipment in the asset catalog, with the simulated remote actions the service desk can run
             without dispatching a technician.
           </p>
         </header>
@@ -213,16 +200,14 @@ function StaffDevicesPage() {
             </Button>
           </div>
 
-          {/* Live-data state. Rows marked GLPI come from the backend; the rest is
-              sample fleet data kept until a fleet-wide endpoint exists. */}
           <div className="border-t px-4 py-2 text-xs text-muted-foreground">
             {liveState === "loading"
-              ? "Loading the GLPI asset catalog…"
+              ? "Loading the asset catalog…"
               : liveState === "error"
-                ? `Live GLPI assets unavailable: ${liveError ?? "request failed"}.`
+                ? `Live assets unavailable: ${liveError ?? "request failed"}.`
                 : liveDevices.length === 0
-                  ? "No assets found in the GLPI catalog."
-                  : `${liveDevices.length} assets from GLPI · ${liveDevices.filter((d) => d.itemType === "Computer").length} Computers, ${liveDevices.filter((d) => d.itemType === "Phone").length} Phones.`}
+                  ? "No assets found in the catalog."
+                  : `${liveDevices.length} live assets · ${liveDevices.filter((d) => d.itemType === "Computer").length} Computers, ${liveDevices.filter((d) => d.itemType === "Phone").length} Phones.`}
           </div>
 
           {rows.length === 0 ? (
@@ -237,9 +222,6 @@ function StaffDevicesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    {/* Borough, carrier, battery and check-in are MDM fields GLPI
-                        does not hold, so they were blank on every row. They stay
-                        in the detail panel, which explains why they are empty. */}
                     {["Asset", "Model", "Type", "Unit", "Health"].map((h) => (
                       <TableHead key={h} className="whitespace-nowrap">
                         {h}
@@ -264,7 +246,7 @@ function StaffDevicesPage() {
                               : "border-muted-foreground/25 bg-muted text-muted-foreground",
                           )}
                         >
-                          {d.source === "live" ? "GLPI" : "Sample"}
+                          {d.source === "live" ? "Live" : "Sample"}
                         </span>
                       </TableCell>
                       <TableCell className="whitespace-nowrap">{dash(d.model)}</TableCell>
@@ -323,7 +305,7 @@ function StaffDevicesPage() {
                     <>
                       <Field label="Device name" value={selected.name} />
                       <Field label="Inventory tag (BTDS)" value={dash(selected.tag)} />
-                      <Field label="GLPI status" value={dash(selected.status)} />
+                      <Field label="Asset status" value={dash(selected.status)} />
                       <Field
                         label="Station"
                         value={dash(selectedLocation?.name ?? selected.unit)}
@@ -361,7 +343,7 @@ function StaffDevicesPage() {
                 {selected.source === "live" ? (
                   <p className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs">
                     Carrier, battery, OS and check-in telemetry need an MDM/EMM integration and are
-                    not available from GLPI — shown as “—” for this live asset. The remote actions
+                    not available — shown as “—” for this live asset. The remote actions
                     below are still simulated.
                   </p>
                 ) : null}
@@ -369,7 +351,7 @@ function StaffDevicesPage() {
                 <div className="rounded-lg border bg-steel/6 p-3 text-sm text-foreground/85">
                   <MapPin className="mr-1.5 inline size-4" />
                   {selected.source === "live"
-                    ? `Assigned location from GLPI: ${dash(selected.unit)}.`
+                    ? `Assigned location: ${dash(selected.unit)}.`
                     : `Last reported inside the ${dash(selected.borough)} coverage area at ${dash(
                         selected.lastCheckIn,
                       )}. Location accuracy depends on the device checking in.`}

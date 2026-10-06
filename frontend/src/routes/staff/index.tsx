@@ -142,8 +142,8 @@ function StaffPage() {
     () => [
       // trend/direction are required by KpiCard; there is no historical series
       // in this demo, so they stay neutral rather than showing invented deltas.
-      { label: "Open Cases", value: summary?.tickets.open ?? 0, trend: "live", direction: "up" as const, hint: "from GLPI" },
-      { label: "Closed Cases", value: summary?.tickets.closed ?? 0, trend: "live", direction: "down" as const, hint: "from GLPI" },
+      { label: "Open Cases", value: summary?.tickets.open ?? 0, trend: "live", direction: "up" as const, hint: "live" },
+      { label: "Closed Cases", value: summary?.tickets.closed ?? 0, trend: "live", direction: "down" as const, hint: "live" },
       { label: "Managed Devices", value: summary?.devices.total ?? 0, trend: "live", direction: "up" as const, hint: "Computers + Phones" },
       {
         label: "Auto-Resolved",
@@ -204,7 +204,7 @@ function StaffPage() {
     setReloadKey((k) => k + 1);
     Promise.allSettled([getDashboard(), getTickets(12)]).finally(() => {
       setRefreshing(false);
-      toast.success("Reloaded from GLPI");
+      toast.success("Reloaded cases");
     });
   };
 
@@ -432,7 +432,7 @@ function StaffPage() {
                   <span className="text-muted-foreground">
                     Showing {(current - 1) * PAGE_SIZE + 1}–
                     {Math.min(current * PAGE_SIZE, filtered.length)} of the {filtered.length} most
-                    recent · {summary?.tickets.total ?? 0} in GLPI
+                    recent · {summary?.tickets.total ?? 0} total
                   </span>
                   <div className="flex items-center gap-2">
                     <Button
@@ -469,7 +469,7 @@ function StaffPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             Counted from the tickets the assistant opened and closed. The remote
             actions behind them (Workspace ONE ping, carrier reset) are simulated
-            for this demo; the tickets themselves are real GLPI records.
+            for this demo.
           </p>
           <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {[
@@ -490,8 +490,8 @@ function StaffPage() {
             {[
               {
                 key: "devices",
-                title: "Field devices in GLPI",
-                subtitle: "Computers + Phones in the Fire Department entity",
+                title: "Field devices",
+                subtitle: "Computers + Phones",
                 value: summary?.devices.total ?? 0,
                 note: `${summary?.devices.withGps ?? 0} with GPS coordinates`,
               },
@@ -505,7 +505,7 @@ function StaffPage() {
               {
                 key: "cases",
                 title: "Cases in the queue",
-                subtitle: "Open and closed, Fire Department entity",
+                subtitle: "Open and closed",
                 value: summary?.tickets.total ?? 0,
                 note: `${summary?.tickets.open ?? 0} still open`,
               },
@@ -590,7 +590,7 @@ function StaffPage() {
               </div>
             </ChartCard>
 
-            <ChartCard title="Fleet by GLPI device type">
+            <ChartCard title="Fleet by device type">
               <div className="h-60 w-full">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <BarChart

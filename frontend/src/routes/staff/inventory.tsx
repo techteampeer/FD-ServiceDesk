@@ -57,22 +57,15 @@ const stateStyles: Record<InventoryState, string> = {
   Unregistered: "border-primary/30 bg-primary/10 text-primary",
 };
 
-
-/** Row shape shared by live GLPI assets and the sample validation queue. */
+/** Row shape shared by live assets and the sample validation queue. */
 type InventoryRow = InventoryRecord & { source: "live" };
 
 function StaffInventoryPage() {
-  // A member who types this URL is redirected to the member portal.
   const { allowed, navUser } = useRequireStaff();
   const [query, setQuery] = useState("");
   const [state, setState] = useState("all");
   const [resolved, setResolved] = useState<Record<string, "accepted" | "rejected">>({});
 
-  // Live GLPI assets appear as already-validated rows: their BTDS inventory
-  // number is authoritative, so nothing needs a decision. Confidence and
-  // submittedAt have no GLPI equivalent and are not invented here.
-  // The service desk validates against the WHOLE catalog, not just the
-  // signed-in member's own equipment.
   const [liveDevices, setLiveDevices] = useState<GlpiDevice[]>([]);
   useEffect(() => {
     if (!allowed) return;
@@ -86,27 +79,24 @@ function StaffInventoryPage() {
       cancelled = true;
     };
   }, [allowed]);
+
   const liveInventory = useMemo<InventoryRow[]>(
     () =>
-      liveDevices
-        .map((d) => ({
-          source: "live" as const,
-          // Most assets carry no BTDS tag, so the device name is the identifier.
-          submitted: (d.assetTag ?? d.name) as string,
-          suggested: (d.assetTag ?? d.name) as string,
-          model: d.model ?? d.name,
-          unit: d.locationName ?? d.unit,
-          state: "Validated" as InventoryState,
-          confidence: 100,
-          submittedAt: "—",
-        })),
+      liveDevices.map((d) => ({
+        source: "live" as const,
+        submitted: (d.assetTag ?? d.name) as string,
+        suggested: (d.assetTag ?? d.name) as string,
+        model: d.model ?? d.name,
+        unit: d.locationName ?? d.unit,
+        state: "Validated" as InventoryState,
+        confidence: 100,
+        submittedAt: "—",
+      })),
     [liveDevices],
   );
-  // Live catalog only: sample validation rows are gone, so nothing on this
-  // screen is invented.
+
   const allInventory = liveInventory;
 
-  /** Honest counts computed from the GLPI catalog this screen is showing. */
   const catalogStats = useMemo(
     () => [
       { label: "Assets in catalog", value: String(liveDevices.length) },
@@ -158,20 +148,20 @@ function StaffInventoryPage() {
             <Database className="size-7 text-primary" /> Inventory Validation
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Equipment identifiers in the GLPI catalog, plus any tag submitted from the field that
+            Equipment identifiers in the catalog, plus any tag submitted from the field that
             did not match. {pending} record{pending === 1 ? "" : "s"} still need a decision.
           </p>
         </header>
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {catalogStats.map((m) => (
-              <Card key={m.label} className="gap-0 rounded-xl p-4 shadow-card">
-                <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                  {m.label}
-                </p>
-                <p className="mt-1 font-display text-2xl font-extrabold">{m.value}</p>
-              </Card>
-            ))}
+          {catalogStats.map((m) => (
+            <Card key={m.label} className="gap-0 rounded-xl p-4 shadow-card">
+              <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {m.label}
+              </p>
+              <p className="mt-1 font-display text-2xl font-extrabold">{m.value}</p>
+            </Card>
+          ))}
         </section>
 
         <Card className="gap-0 overflow-hidden rounded-xl p-0 shadow-card">
@@ -224,7 +214,7 @@ function StaffInventoryPage() {
                   <TableRow>
                     {[
                       "Identifier",
-                      "GLPI match",
+                      "Catalog match",
                       "Model",
                       "Unit",
                       "Confidence",
@@ -253,7 +243,7 @@ function StaffInventoryPage() {
                                 : "border-muted-foreground/25 bg-muted text-muted-foreground",
                             )}
                           >
-                            {r.source === "live" ? "GLPI" : "Sample"}
+                            {r.source === "live" ? "Catalog" : "Sample"}
                           </span>
                         </TableCell>
                         <TableCell className="font-mono text-xs whitespace-nowrap">

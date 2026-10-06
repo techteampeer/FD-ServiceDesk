@@ -105,7 +105,7 @@ function StaffCasesPage() {
     const m = new Map<string, string>();
     for (const t of tickets) {
       const o = originOf(t);
-      if (o) m.set(t.reference ?? `GLPI-${t.id}`, o.label);
+      if (o) m.set(t.reference ?? `#${t.id}`, o.label);
     }
     return m;
   }, [tickets]);
@@ -115,7 +115,7 @@ function StaffCasesPage() {
   /** Opening a case pulls full detail so the drawer shows the real content. */
   const openCase = async (c: ServiceCase) => {
     setSelected(c);
-    const t = tickets.find((x) => (x.reference ?? `GLPI-${x.id}`) === c.id);
+    const t = tickets.find((x) => (x.reference ?? `#${x.id}`) === c.id);
     if (!t) return;
     try {
       const full = await getTicket(t.id);
@@ -184,7 +184,7 @@ function StaffCasesPage() {
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {loadState === "loading"
-                ? "Loading the queue from GLPI…"
+                ? "Loading tickets queue"
                 : loadState === "error"
                   ? (loadError ?? "The queue could not be loaded.")
                   : `${filtered.length} of ${cases.length} cases shown`} · {summary.unassigned}{" "}
